@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Spark / Hadoop
+spark-warehouse/
+metastore_db/
+derby.log
+logs/
+*.log
+
+# Datos pesados
+data/raw/
+data/curated/
+data/cache/
+!data/sample/
+!data/sample/**
+
+# Entorno y credenciales
+.env
+.env.*
+!.env.example
+install/env-backup.json
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Herramientas del agente
+.opencode/
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
