@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-29",
+  "layout": {
+    "fallbackRoot": "%LOCALAPPDATA%\\spark-lab",
+    "sparkDir": "spark",
+    "javaDir": "jdk",
+    "hadoopDir": "winutils",
+    "pythonDir": ".tools\\python310",
+    "venvDir": ".venv",
+    "cacheDir": "cache"
+  },
+  "spark": {
+    "version": "3.3.4",
+    "hadoopProfile": "hadoop3",
+    "artifact": "spark-3.3.4-bin-hadoop3.tgz",
+    "url": "https://archive.apache.org/dist/spark/spark-3.3.4/spark-3.3.4-bin-hadoop3.tgz",
+    "sha512": "a3874e340a113e95898edfa145518648700f799ffe2d1ce5dde7743e88fdf5559d79d9bcb1698fdfa5296a63c1d0fc4c8e32a93529ed58cd5dcf0721502a1fc7",
+    "sizeBytes": 299467603,
+    "approxExtractedBytes": 430000000
+  },
+  "jdk": {
+    "vendor": "Eclipse Temurin",
+    "version": "11.0.25+9",
+    "major": 11,
+    "artifact": "OpenJDK11U-jdk_x64_windows_hotspot_11.0.25_9.zip",
+    "url": "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.25%2B9/OpenJDK11U-jdk_x64_windows_hotspot_11.0.25_9.zip",
+    "sha256": "472d59e54f81e86c79192b7d9291d94f6e29d6d56ef7ed1d8aa74fcc7df548dc",
+    "sizeBytes": 199993997,
+    "approxExtractedBytes": 290000000
+  },
+  "hadoop": {
+    "version": "3.3.6",
+    "git": "https://github.com/cdarlint/winutils.git",
+    "commit": "7386986d5d8a079b5cd4464f4599766dd27e7d13",
+    "rawBase": "https://raw.githubusercontent.com/cdarlint/winutils/7386986d5d8a079b5cd4464f4599766dd27e7d13/hadoop-3.3.6/bin",
+    "files": [
+      {
+        "name": "winutils.exe",
+        "sha256": "496a591eb1e67df2a620f710d529ba6ddfe1c19149e6647cc4e320bb0efd8553",
+        "sizeBytes": 119296
+      },
+      {
+        "name": "hadoop.dll",
+        "sha256": "d7ab36a68518748cef142be2da5069b4c763c2cd764c1d2e6ac48c7200405be3",
+        "sizeBytes": 78848
+      }
+    ]
+  },
+  "python": {
+    "version": "3.10.11",
+    "minor": "3.10",
+    "artifact": "python-3.10.11-amd64.exe",
+    "url": "https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe",
+    "sha256": "d8dede5005564b408ba50317108b765ed9c3c510342a598f9fd42681cbe0648b",
+    "sizeBytes": 29037240,
+    "approxExtractedBytes": 90000000,
+    "installerArgs": [
+      "/quiet",
+      "InstallAllUsers=0",
+      "PrependPath=0",
+      "Include_launcher=0",
+      "Include_pip=1",
+      "Include_test=0",
+      "Include_doc=0",
+      "Shortcuts=0",
+      "AssociateFiles=0"
+    ]
+  },
+  "space": {
+    "requiredGB": 3.0,
+    "recommendedGB": 5.0
+  }
+}

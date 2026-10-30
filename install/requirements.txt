@@ -1,0 +1,11 @@
+# Runtime packages for the lab virtual environment.
+# PySpark is NOT listed here: it ships inside the Apache Spark 3.3.4 tarball and is
+# placed on PYTHONPATH by install\spark-env.ps1.
+findspark==2.0.1
+numpy==1.26.4
+pandas==1.5.3
+pyarrow==11.0.0
+matplotlib==3.8.4
+python-dotenv==1.0.1
+jupyterlab==4.2.5
+notebook==7.2.2

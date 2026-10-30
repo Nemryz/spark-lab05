@@ -1,0 +1,5 @@
+# Development-only packages. Install with:
+#   .\install\run.ps1 python -m pip install -r install\requirements-dev.txt
+-r requirements.txt
+pytest==8.3.3
+ruff==0.6.9

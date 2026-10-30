@@ -1,0 +1,169 @@
+name: installer
+
+on:
+  push:
+    paths:
+      - "install/**"
+      - "tests/**"
+      - ".github/workflows/installer.yml"
+  pull_request:
+    paths:
+      - "install/**"
+      - "tests/**"
+      - ".github/workflows/installer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CACHE_DIR: C:\spark-lab\cache
+
+jobs:
+  analyze:
+    name: Syntax and unit tests (${{ matrix.shell }})
+    runs-on: windows-2022
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pester
+        shell: ${{ matrix.shell }}
+        run: |
+          Install-Module Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck -AllowClobber
+          Import-Module Pester -MinimumVersion 5.5.0 -Force
+          Get-Module -ListAvailable Pester | Select-Object Name, Version
+      - name: Parse every PowerShell script
+        shell: ${{ matrix.shell }}
+        run: |
+          $failed = $false
+          foreach ($file in Get-ChildItem -Path install, tests -Filter *.ps1 -Recurse) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              Write-Host "Parse errors in $($file.FullName)"
+              foreach ($error in $errors) {
+                Write-Host "  line $($error.Extent.StartLineNumber): $($error.Message)"
+              }
+            }
+          }
+          if ($failed) { throw "One or more scripts contain parse errors." }
+          Write-Host "All scripts parsed successfully."
+      - name: Run Pester
+        shell: ${{ matrix.shell }}
+        run: |
+          $result = Invoke-Pester -Path tests/unit -Output Detailed -PassThru
+          if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
+
+  install:
+    name: Clean install and idempotency
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: sparklab-${{ runner.os }}-${{ hashFiles('install/dependencies.json') }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-${{ runner.os }}-${{ hashFiles('install/requirements.txt') }}
+      - name: Install
+        shell: powershell
+        run: .\install\install-spark.ps1 -UserRoot C:\spark-lab -CachePath $env:CACHE_DIR -NoUserEnv -Ci
+      - name: Verify
+        shell: powershell
+        run: .\install\verify-install.ps1 -Json
+      - name: Install again to prove idempotency
+        shell: powershell
+        run: .\install\install-spark.ps1 -UserRoot C:\spark-lab -CachePath $env:CACHE_DIR -NoUserEnv -Ci
+      - name: Verify after the second install
+        shell: powershell
+        run: .\install\verify-install.ps1 -Json
+      - name: Run spark-submit through run.ps1
+        shell: powershell
+        run: |
+          .\install\run.ps1 python tests\smoke_test.py
+          if ($LASTEXITCODE -ne 0) { throw "The smoke test failed." }
+
+  spaces:
+    name: Repository path with spaces
+    runs-on: windows-2022
+    timeout-minutes: 60
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: sparklab-${{ runner.os }}-${{ hashFiles('install/dependencies.json') }}
+      - name: Copy the repository to a path with spaces
+        shell: powershell
+        run: Copy-Item -Path . -Destination 'C:\spark lab repo' -Recurse -Force
+      - name: Install from the path with spaces
+        shell: powershell
+        working-directory: C:\spark lab repo
+        run: .\install\install-spark.ps1 -UserRoot C:\spark-lab -CachePath $env:CACHE_DIR -NoUserEnv -Ci
+      - name: Verify
+        shell: powershell
+        working-directory: C:\spark lab repo
+        run: .\install\verify-install.ps1 -Json
+
+  no-git:
+    name: Winutils fallback without git
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install with git hidden from PATH
+        shell: powershell
+        run: |
+          $env:PATH = (($env:PATH -split ';') | Where-Object { $_ -and $_ -notmatch 'Git' }) -join ';'
+          if (Get-Command git.exe -ErrorAction SilentlyContinue) { throw "git is still visible." }
+          .\install\install-spark.ps1 -UserRoot C:\spark-lab-nogit -CachePath C:\spark-lab-nogit\cache -NoUserEnv -Ci -SkipJava -SkipSpark -SkipPython
+          if ($LASTEXITCODE -ne 0) { throw "The fallback install failed." }
+      - name: Check the downloaded binaries
+        shell: powershell
+        run: |
+          $bin = 'C:\spark-lab-nogit\winutils\bin'
+          $expected = @{
+            'winutils.exe' = '496a591eb1e67df2a620f710d529ba6ddfe1c19149e6647cc4e320bb0efd8553'
+            'hadoop.dll'   = 'd7ab36a68518748cef142be2da5069b4c763c2cd764c1d2e6ac48c7200405be3'
+          }
+          foreach ($name in $expected.Keys) {
+            $path = Join-Path $bin $name
+            if (-not (Test-Path -LiteralPath $path)) { throw "$name is missing." }
+            $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $expected[$name]) { throw "$name has a wrong checksum." }
+          }
+          Write-Host "The fallback copied both binaries with the expected checksums."
+
+  bad-checksum:
+    name: Invalid checksum must abort
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corrupt the winutils checksum
+        shell: powershell
+        run: |
+          $path = 'install/dependencies.json'
+          $raw = Get-Content -LiteralPath $path -Raw
+          $raw = $raw -replace '496a591eb1e67df2a620f710d529ba6ddfe1c19149e6647cc4e320bb0efd8553', ('0' * 64)
+          Set-Content -LiteralPath $path -Value $raw -Encoding UTF8
+      - name: The installer must refuse the file
+        shell: powershell
+        run: |
+          .\install\install-spark.ps1 -UserRoot C:\spark-lab-bad -CachePath C:\spark-lab-bad\cache -NoUserEnv -Ci -SkipJava -SkipSpark -SkipPython -NoGit
+          $code = $LASTEXITCODE
+          if ($code -eq 0) { throw "The installer accepted an invalid checksum." }
+          Write-Host "The installer failed as expected with exit code $code."
