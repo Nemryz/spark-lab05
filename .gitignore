@@ -27,11 +27,14 @@ data/cache/
 !.env.example
 install/env-backup.json
 
+# Herramientas locales del instalador
+.tools/
+cache/
+install/install-state.json
+install/spark-env.ps1
+
 # Notebooks
 .ipynb_checkpoints/
-
-# Herramientas del agente
-.opencode/
 
 # IDE / OS
 .vscode/
