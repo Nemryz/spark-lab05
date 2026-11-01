@@ -1,94 +1,159 @@
 ﻿# Laboratorio 05 de Apache Spark
 
-Este archivo reúne el entorno, la planificación y los criterios del laboratorio 05 de Apache Spark. El tema de datos todavía no está elegido, así que la primera parte presenta candidatos verificados y la segunda describe la metodología, las demostraciones y la entrega con marcadores `[tema]` que se reemplazan cuando el equipo decida.
+Este documento reúne el enunciado, el plan y la ejecución del laboratorio 05 de Apache Spark. El tema elegido es el catálogo público de IMDb y todas las secciones describen ese conjunto, de modo que el archivo sirve a la vez como guía de trabajo, como justificación de las decisiones y como evidencia de lo que se entrega.
 
-## Reglas de la entrega
+## Qué pide el enunciado
 
-El taller pide un cuadro comparativo entre RDD, DataFrame y Dataset, un ejemplo con RDD que use cuatro transformaciones y cuatro acciones no vistas en clase, y un ejemplo con DataFrame que muestre las funciones vistas en clase más cuatro funciones investigadas por el equipo. Cada equipo debe cubrir los tres puntos.
+El taller califica cinco puntos. El primero es un cuadro comparativo entre RDD, DataFrame y Dataset. El segundo es un ejemplo con RDD que use cuatro transformaciones y cuatro acciones distintas de las vistas en clase. El tercero es un ejemplo con DataFrame que muestre las funciones vistas en clase más cuatro funciones investigadas por el equipo. El cuarto es la conformación de cuatro equipos con un mínimo de dos estudiantes, informada por correo antes de la medianoche del 28 de octubre. El quinto es una exposición de diez minutos.
 
-La conformación de equipos cierra antes de la medianoche del 28 de octubre y se informa por correo. Deben existir cuatro equipos con un mínimo de dos estudiantes y sin máximo, y el docente reasigna a quien quede fuera de ellos. La exposición dura diez minutos con una tolerancia de dos minutos hacia arriba o hacia abajo, y cada minuto fuera de ese rango descuenta dos puntos. Todos los integrantes deben exponer y estar presentes, porque la ausencia individual vale 1,0 y resta dos puntos al equipo.
+| Punto | Lo que se entrega | Cómo se comprueba |
+| --- | --- | --- |
+| Cuadro comparativo | Tabla con criterios de abstracción, tipado, optimización, serialización y uso | Se lee en el informe y en las diapositivas |
+| Ejemplo con RDD | Script ejecutable con cuatro transformaciones y cuatro acciones nuevas | La salida imprime el nombre de cada función |
+| Ejemplo con DataFrame | Script ejecutable con las funciones de clase más cuatro investigadas | La salida imprime el nombre de cada función |
+| Equipos | Correo con la lista de integrantes antes del cierre | Acuse del docente |
+| Exposición | Diez minutos con tolerancia de dos minutos | Cronómetro del docente |
 
-## Estado actual
+Las condiciones de la exposición son estrictas. Cada minuto fuera del rango de ocho a doce minutos descuenta dos puntos sobre la nota. Todos los integrantes deben exponer y estar presentes al momento de la entrega, porque la ausencia de una persona vale 1,0 individualmente y resta dos puntos al equipo. La conformación también tiene regla propia, ya que deben existir cuatro equipos, el mínimo es de dos estudiantes y el docente reasigna a quien quede sin equipo.
 
-El instalador de Windows está terminado y verificado sobre Windows 11 Home con una cuenta estándar. Las doce comprobaciones pasan, un trabajo real de Spark se ejecuta y la interfaz web responde. Falta elegir el tema, construir la ingesta, escribir las dos demostraciones, redactar el informe y preparar la exposición.
+## Qué hay que hacer
 
-## Temas candidatos
+El trabajo se parte en seis piezas que se verifican por separado. Cada una tiene un archivo responsable y un criterio de aceptación que no depende de interpretaciones.
 
-Los candidatos cumplen cinco condiciones. Se descargan sin clave ni registro, publican un volumen que justifica Spark, ofrecen columnas numéricas, categóricas y temporales, incluyen algún campo anidado que permita `explode` o `pivot`, y declaran una licencia compatible con un trabajo académico.
+| Entregable | Archivo | Criterio de aceptación |
+| --- | --- | --- |
+| Ingesta | `scripts\get_data.py` y `scripts\build_curated.py` | Reproduce los datos desde cero con un solo comando por paso |
+| Muestra | `data\sample\imdb_sample.csv` | 5.000 filas, menos de 5 MB y versión en git |
+| Demo con RDD | `src\rdd_lab.py` | Ocho funciones etiquetadas, cuatro transformaciones y cuatro acciones |
+| Demo con DataFrame | `src\dataframe_lab.py` | Nueve funciones etiquetadas, cinco de clase y cuatro investigadas |
+| Cuadro comparativo | Este archivo y el informe | Criterios con fuente y una fila de medición real |
+| Informe | `informe\informe.pdf` | Resultados, capturas y conclusiones |
+| Exposición | `diapositivas\presentacion.pdf` | Diez minutos y todos los integrantes hablando |
 
-| Tema | Fuente | Formato | Volumen | Rasgo útil |
-| --- | --- | --- | --- | --- |
-| Videojuegos | SteamSpy | JSON por API | Unas 20.000 aplicaciones | Etiquetas y géneros anidados |
-| Contratación pública | SECOP II | JSON y CSV | 5,6 millones de contratos | Entidades, modalidades y valores |
-| Movilidad urbana | NYC TLC | Parquet | Unos 3 millones de viajes por mes | Fechas, tarifas y zonas |
-| Cine | MovieLens | CSV comprimido | 100.000 valoraciones en la muestra pequeña | Géneros separados por barras |
-| Cine y series | IMDb | TSV comprimido | 229 MB y unos 11 millones de títulos | Años, géneros y calificaciones |
-| Vivienda turística | Inside Airbnb | CSV comprimido | Decenas de miles de avisos por ciudad | Barrios, tipos de alojamiento y precios |
-| Aviación | OpenFlights | CSV | Unos 67.000 rutas | Origen, destino y aerolínea |
-| Seguridad informática | NVD CVE | JSON por API | Unos 385.000 registros | Severidad, proveedor y fechas |
+La ingesta es la base de todo lo demás. Si la descarga no queda registrada con su hash, la muestra no se puede reconstruir y el informe pierde trazabilidad. Por eso el primer script escribe un manifiesto con URL, tamaño, fecha y SHA256 de cada archivo, y el segundo convierte ese crudo en Parquet tipado sin volver a descargar nada.
 
-**SteamSpy.** La API pública en [steamspy.com/api.php](https://steamspy.com/api.php) entrega mil aplicaciones por página y añade género, etiquetas e idiomas al consultar cada juego. Permite separar etiquetas con `explode`, cruzar género con categoría de precio mediante `pivot` y ordenar por propietarios con `Window`. El límite de una petición cada sesenta segundos obliga a cachear el crudo y conviene descargarlo una sola vez.
+Las dos demos son independientes entre sí. La de RDD trabaja con pares clave valor y con un particionador explícito. La de DataFrame trabaja con columnas nombradas y deja que Catalyst decida el plan. Cada una imprime el nombre de la función antes de usarla, de modo que la salida sirva como evidencia en la exposición.
 
-**SECOP II.** El conjunto [SECOP II - Contratos Electrónicos](https://www.datos.gov.co/d/jbjy-vk9h) publica 5,6 millones de contratos con entidad, proveedor, modalidad, valor y fechas. La API Socrata responde en JSON y el portal ofrece una [descarga completa en CSV](https://www.datos.gov.co/api/views/jbjy-vk9h/rows.csv?accessType=DOWNLOAD). Sirve para `join` entre contratos y proveedores, `pivot` por modalidad y `Window` por entidad. La licencia es CC BY-SA 4.0 y no exige clave.
+El cierre tiene cuatro pasos que no aparecen en la tabla porque son de proceso. Enviar el correo de conformación, ensayar con cronómetro al menos dos veces, revisar que todos puedan explicar cualquier punto y guardar las capturas de ejecución antes de armar las diapositivas.
 
-**NYC TLC.** Los [registros de viajes de taxi de Nueva York](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) se publican en Parquet por mes, con unos 50 MB y cerca de tres millones de filas por archivo. Un solo mes alcanza para las demostraciones y varios meses permiten comparar estaciones. Aporta marcas de tiempo, tarifas, propinas y zonas, de modo que habilita `Window` por hora, `pivot` por tipo de pago y `join` con la tabla de zonas. No requiere clave.
+## Cómo funciona
 
-**MovieLens.** [GroupLens](https://grouplens.org/datasets/movielens/) distribuye calificaciones de películas en CSV comprimido. La versión pequeña pesa menos de un megabyte y contiene 100.000 valoraciones, mientras que la completa supera los 200 MB y llega a 32 millones. Los géneros vienen separados por barras, así que `explode` resulta natural, y `Window` permite ordenar por usuario o por película. La licencia autoriza el uso académico.
+El flujo tiene cinco estaciones y cada una produce algo que la siguiente consume. El crudo se descarga una sola vez, la curaduría lo convierte en columnas tipadas, y las demos leen ese resultado sin tocar la red.
 
-**IMDb.** Los [archivos públicos de IMDb](https://datasets.imdbws.com/) incluyen títulos, calificaciones y tripulaciones en TSV comprimido. `title.basics.tsv.gz` pesa 229 MB y reúne unos once millones de títulos con año, géneros y duración. Es la opción con mayor volumen inicial y exige filtrar antes de procesar, lo que se convierte en una buena lección de particionado. El uso es no comercial.
-
-**Inside Airbnb.** El portal [Inside Airbnb](https://insideairbnb.com/get-the-data/) publica por ciudad los avisos, el calendario y las reseñas en CSV comprimido. Los avisos traen barrio, tipo de alojamiento, precio, disponibilidad y número de reseñas, de modo que `pivot` por tipo, `Window` por barrio y `join` con el calendario cubren las demostraciones. La licencia es abierta y cada archivo se descarga directamente.
-
-**OpenFlights.** El repositorio [OpenFlights](https://github.com/jpatokal/openflights/tree/master/data) mantiene rutas, aeropuertos, aerolíneas y aviones en CSV sin encabezado. El archivo de rutas pesa 2,3 MB y contiene unas 67.000 conexiones, suficiente para `join` entre rutas y aeropuertos y para `Window` por aerolínea. La licencia es Open Database License y el volumen permite probar sin esperas.
-
-**NVD CVE.** La [API de vulnerabilidades del NIST](https://nvd.nist.gov/developers/vulnerabilities) entrega registros JSON con severidad, proveedor, debilidades y fechas. El catálogo supera los 385.000 registros y se consulta en páginas de dos mil, aunque el servicio limita la frecuencia y conviene descargar por rangos de fecha. Los campos anidados permiten `explode` de debilidades y `pivot` por severidad. No requiere clave para el uso básico.
-
-**Alternativas.** La API de [Jolpica para Fórmula 1](https://api.jolpi.ca/ergast/) reúne 26.000 resultados históricos y funciona sin clave desde que Ergast dejó de responder. La API de [TVmaze](https://www.tvmaze.com/api) publica series y episodios en JSON paginado y se presta para `explode` de géneros. La API del [Banco Mundial](https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json) entrega indicadores por país y año con 17.000 observaciones por indicador.
-
-Quedan descartadas las fuentes que exigen autenticación, como Kaggle y Yelp, las que superan los 7 GB de descarga, como StatsBomb, y las que dependen de una clave privada.
-
-## Selección del tema
-
-El equipo comparará los candidatos con cuatro preguntas. ¿Cuánto tarda la descarga completa en una conexión doméstica? ¿El esquema permite las cuatro transformaciones y las cuatro funciones sin forzar el ejemplo? ¿La licencia autoriza publicar una muestra en el repositorio? ¿La API se mantiene estable durante las dos semanas del trabajo? La decisión se documenta en una línea dentro de este archivo y se reemplaza el marcador `[tema]` en todas las secciones.
-
-## Ingesta genérica
-
-Los scripts no dependen del tema porque reciben el nombre como argumento. `scripts\get_data.py` descarga el recurso, guarda un manifiesto con URL, fecha y SHA256 y reanuda desde el último archivo cuando se interrumpe. `scripts\build_curated.py` normaliza tipos, separa listas y deriva columnas. `scripts\make_sample.py` produce una muestra versionada de 5.000 filas y menos de 5 MB.
-
-```powershell
-.\install\run.ps1 python scripts\get_data.py --source [tema] --resource [recurso] --delay [segundos]
-.\install\run.ps1 python scripts\build_curated.py --source [tema]
-.\install\run.ps1 python scripts\make_sample.py --source [tema] --rows 5000
+```text
+datasets.imdbws.com
+        |
+        v
+data/raw/imdb/*.tsv.gz  +  manifest.json
+        |
+        v
+data/curated/imdb/titles/  +  ratings/  (Parquet)
+data/curated/imdb/titles.tsv  +  ratings.tsv  (texto plano)
+        |
+        +--> src/rdd_lab.py  ----------> salida por consola
+        |
+        +--> src/dataframe_lab.py -----> salida por consola, plan y tiempos
+        |
+        v
+data/sample/imdb_sample.csv
+        |
+        v
+informe/informe.pdf  +  diapositivas/presentacion.pdf
 ```
 
-El crudo queda en `data\raw\[tema]\[recurso]_000.json` y siguientes, la curación en `data\curated\[tema]` y la muestra en `data\sample\[tema]_sample.csv`. Las carpetas de crudo y curación se ignoran en git porque el contenido se reconstruye con el manifiesto, mientras que la muestra sí se versiona.
+Los comandos se ejecutan siempre a través del lanzador, que carga el entorno del laboratorio y fija la memoria del controlador antes de arrancar la JVM.
 
-## Esquema genérico
+```powershell
+.\install\run.ps1 python scripts\get_data.py --resource basics
+.\install\run.ps1 python scripts\get_data.py --resource ratings
+.\install\run.ps1 python scripts\build_curated.py
+.\install\run.ps1 python scripts\make_sample.py --rows 5000
+.\install\run.ps1 python tests\check_data.py
+.\install\run.ps1 submit src\rdd_lab.py
+.\install\run.ps1 submit src\dataframe_lab.py
+```
 
-| Columna | Tipo | Ejemplo | Uso previsto |
+| Paso | Qué produce | Qué se espera ver |
+| --- | --- | --- |
+| Descarga | `title.basics.tsv.gz`, `title.ratings.tsv.gz` y `manifest.json` | Dos líneas con bytes y SHA256 |
+| Curaduría | `titles` y `ratings` en Parquet y en TSV | 71.355 títulos y 1.727.597 notas |
+| Muestra | `imdb_sample.csv` | 5.000 filas y el peso del archivo |
+| Demo con RDD | Ocho bloques en consola | Particiones, conteos y top de votos |
+| Demo con DataFrame | Nueve bloques, el plan y los tiempos | Plan físico y milisegundos por consulta |
+
+La descarga se reanuda desde el último byte cuando se interrumpe, gracias a una petición por rango sobre el archivo parcial. La curaduría lee el TSV por transmisión, sin cargarlo entero en memoria, y escribe Parquet por bloques. Ese detalle es el que permite procesar 1,12 GB con un equipo de 8 GB.
+
+## El conjunto elegido
+
+IMDb publica dos archivos que cubren todo lo que el taller necesita. El primero describe cada título con su clave, su tipo, su año, su duración y sus géneros. El segundo añade la nota media y el número de votos para los títulos que tienen suficientes calificaciones.
+
+| Archivo | Comprimido | Sin comprimir | Contenido |
 | --- | --- | --- | --- |
-| id | entero | 730 | Clave de unión y particionado |
-| categoria | texto | Acción | `distinct`, `countByValue`, `pivot` |
-| subcategoria | texto | Indie | Cruces y filtros |
-| valor | decimal | 19.99 | `aggregate`, `takeOrdered`, promedios |
-| fecha | fecha | 2026-10-29 | `Window` por periodo |
-| texto | texto | Edición deluxe | `regexp_replace` y limpieza |
-| etiquetas | lista de texto | cooperativo, multijugador | `explode` |
-| metricas | estructura | positivas, negativas | Acceso anidado |
+| `title.basics.tsv.gz` | 219 MB | 1,12 GB | 12.916.450 títulos |
+| `title.ratings.tsv.gz` | 8,3 MB | 30 MB | 1.727.597 títulos calificados |
 
-Cada tema conserva sus nombres reales y la tabla anterior solo fija los roles. La curación traduce los rangos, los precios en centavos y las fechas en texto a tipos utilizables, y descarta las filas sin clave.
+Los archivos están en [datasets.imdbws.com](https://datasets.imdbws.com/), se descargan sin clave ni registro, vienen en TSV con cabecera y usan `\N` para el valor nulo. La licencia permite uso personal y no comercial, así que el repositorio publica solo la muestra de 5.000 filas y el informe cita la fuente.
+
+La elección se sostiene en cinco razones. El volumen de 1,12 GB justifica el uso de Spark y obliga a hablar de particiones. La clave `tconst` aparece en los dos archivos y habilita un `join` real. La columna `genres` trae listas separadas por comas y permite `explode` sin inventar datos. Los años y las notas permiten `Window`, promedios y percentiles. Y la descarga no depende de una API con límite de peticiones, que es el riesgo más común en los otros temas.
+
+Quedaron atrás los demás candidatos por razones concretas. SECOP II depende de un portal que cambia de esquema, NYC TLC obliga a elegir un mes, MovieLens se queda corto de volumen, Inside Airbnb dispersa los datos por ciudad, OpenFlights no alcanza las 70.000 filas y NVD limita la frecuencia de consulta. IMDb gana porque un solo par de archivos cubre claves, categorías, años, números y listas.
+
+## Esquema
+
+La curaduría conserva los nombres originales y añade dos columnas derivadas. La tabla siguiente fija el tipo de cada una y el uso que tiene en las demos.
+
+| Columna | Tipo | Origen | Uso en las demos |
+| --- | --- | --- | --- |
+| `tconst` | texto | basics y ratings | Clave del `join` y del `partitionBy` |
+| `titleType` | texto | basics | `countByValue`, `pivot` y filtros |
+| `primaryTitle` | texto | basics | `regexp_replace` y muestras |
+| `startYear` | entero | basics | `Window` por década y filtro temprano |
+| `runtimeMinutes` | entero | basics | `aggregate` y promedios |
+| `genres` | texto con comas | basics | `explode` y `pivot` |
+| `averageRating` | decimal | ratings | `takeOrdered` y `Window` |
+| `numVotes` | entero | ratings | `aggregate` y ranking |
+| `decade` | entero | derivada de `startYear` | Agrupación por periodo y `Window` |
+
+La curaduría aplica cuatro reglas. Descarta las filas sin `tconst`, traduce `\N` a nulo, convierte años y duraciones a enteros y conserva los títulos con mil votos o más, salvo los episodios de serie. Con ese filtro quedan 71.355 títulos y 18,8 MB de Parquet, mientras que las notas conservan 1.727.597 filas para que el `join` muestre tanto las claves que emparejan como las que sobran. La columna `genre` no se almacena, la produce `explode` dentro de la demo de DataFrame.
 
 ## Demo con RDD
 
-La demostración parte del crudo curado y recorre cuatro transformaciones y cuatro acciones distintas de las vistas en clase, que son `map`, `filter`, `flatMap`, `reduceByKey`, `collect`, `count`, `take` y `reduce`. La selección propuesta usa `mapPartitionsWithIndex` para mostrar el reparto de particiones, `distinct` para reducir categorías, `join` para cruzar el catálogo con los hechos y `partitionBy` para controlar el particionado antes de una acción costosa.
+La demo lee el TSV curado como texto para mostrar el costo de interpretar cada línea a mano, y después encadena las ocho funciones sobre pares clave valor. El orden importa porque deja ver dónde aparece un shuffle y qué lo evita. Como el archivo no está comprimido, la demo lo abre con ocho particiones mínimas y muestra el conteo real de cada una.
 
-Las acciones propuestas son `takeOrdered` para obtener los mayores valores, `aggregate` para calcular un promedio con acumuladores propios, `countByValue` para contar categorías sin pasar por un `reduceByKey` y `foreachPartition` para escribir un resumen por partición. Cada paso imprime el número de particiones antes y después, de modo que el informe explique dónde ocurre un shuffle y por qué.
+| Función | Tipo | Qué hace en la demo | Salida esperada |
+| --- | --- | --- | --- |
+| `mapPartitionsWithIndex` | Transformación | Recorre cada partición con su índice y cuenta elementos | Una línea por partición con su conteo |
+| `distinct` | Transformación | Reduce los tipos de título a su conjunto único | Menos de diez valores |
+| `join` | Transformación | Cruza títulos con calificaciones por `tconst` | Conteo de pares emparejados |
+| `partitionBy` | Transformación | Reparte por hash de `tconst` antes del `join` | Conteo por partición sin huecos |
+| `takeOrdered` | Acción | Devuelve las diez películas con más votos | Diez tuplas ordenadas |
+| `aggregate` | Acción | Calcula la nota media ponderada por votos | Un decimal con la nota global |
+| `countByValue` | Acción | Cuenta títulos por tipo sin `reduceByKey` | Diccionario con el conteo |
+| `foreachPartition` | Acción | Escribe un resumen por partición | Un archivo con una línea por partición |
+
+Las cuatro transformaciones elegidas no aparecen en la lista de clase, que son `map`, `filter`, `flatMap` y `reduceByKey`. Las cuatro acciones tampoco aparecen en la otra lista, que son `collect`, `count`, `take` y `reduce`. `map` y `filter` sí se usan como apoyo para parsear y limpiar, pero no cuentan como las funciones nuevas y la salida las marca como auxiliares.
+
+La demo imprime el número de particiones antes y después de cada paso. Ese detalle permite explicar en el informe que `join` y `distinct` provocan un shuffle, que `partitionBy` lo hace una sola vez y que el `join` posterior lo aprovecha, y que `takeOrdered` solo mueve un montón pequeño al controlador.
 
 ## Demo con DataFrame
 
-La demostración reproduce las operaciones vistas en clase con `select`, `filter`, `groupBy`, `agg` y `orderBy`, y añade cuatro funciones investigadas. La propuesta usa `Window` para ordenar dentro de cada categoría, `pivot` para cruzar categoría con rango de valor, `explode` para separar las etiquetas y `regexp_replace` para limpiar el texto antes de agrupar.
+La demo responde cinco preguntas con las funciones vistas en clase y cuatro más con funciones investigadas. Cada bloque imprime la consulta, el resultado y el plan físico para que la comparación con RDD use la misma evidencia.
 
-El cierre compara la misma consulta con RDD y con DataFrame, mide el tiempo de cada una y muestra el plan físico con `explain(True)`. Esa evidencia alimenta el cuadro comparativo y la conclusión sobre cuándo conviene cada interfaz.
+| Función | Origen | Pregunta que resuelve |
+| --- | --- | --- |
+| `select` | Clase | Proyecta clave, título, año y nota |
+| `filter` | Clase | Deja películas desde 1990 con más de mil votos |
+| `groupBy` | Clase | Agrupa por género y década |
+| `agg` | Clase | Calcula promedio de nota y suma de votos |
+| `orderBy` | Clase | Ordena por nota y desempata por votos |
+| `Window` con `row_number` | Investigada | Tres mejores títulos por género |
+| `pivot` | Investigada | Nota media por década y tipo de título |
+| `explode` con `split` | Investigada | Un renglón por género a partir de la lista |
+| `regexp_replace` | Investigada | Normaliza títulos para detectar repetidos |
+
+El cierre ejecuta la misma consulta con las dos interfaces, mide el tiempo con `time.perf_counter` y guarda el resultado en `informe\mediciones.csv` con tres columnas, consulta, interfaz y milisegundos. Esa tabla alimenta la fila de medición del cuadro comparativo y la conclusión sobre cuándo conviene cada interfaz.
+
+La demo usa además `corr` para mostrar la relación entre duración y nota, y `percentile_approx` para la mediana de votos por género. Esas dos funciones quedan como refuerzo en el informe y no reemplazan a las cuatro investigadas.
 
 ## Comparativa de las tres interfaces
 
@@ -102,47 +167,63 @@ El cierre compara la misma consulta con RDD y con DataFrame, mide el tiempo de c
 | API disponible en Python | Sí | Sí | No |
 | Casos de uso | Control fino y datos sin estructura | ETL, SQL y analítica tabular | Dominios tipados sobre la JVM |
 | Depuración | Errores en tiempo de ejecución | Plan físico legible con `explain` | Errores de tipo antes de ejecutar |
+| Medición en la misma consulta | Se registra en `informe\mediciones.csv` | Se registra en `informe\mediciones.csv` | No aplica en Python |
+| Líneas de código | Más, por el parseo manual | Menos, por las columnas nombradas | Intermedio, con clases del dominio |
 
-PySpark no expone `Dataset`, puesto que el tipo `Dataset[T]` pertenece a Scala y Java, donde el `Encoder[T]` conserva el esquema en tiempo de compilación. En Python toda la API tabular pasa por `DataFrame`, que equivale a un `Dataset[Row]` sin tipado estático. La comparativa incluirá un fragmento de Scala en el informe y la medición real de RDD contra DataFrame.
+PySpark no expone `Dataset`, puesto que el tipo `Dataset[T]` pertenece a Scala y Java, donde el `Encoder[T]` conserva el esquema en tiempo de compilación. En Python toda la API tabular pasa por `DataFrame`, que equivale a un `Dataset[Row]` sin tipado estático. El informe incluye un ejemplo corto en Scala para mostrar la diferencia real.
+
+```scala
+case class Title(tconst: String, titleType: String, startYear: Int, averageRating: Double)
+
+val titles = spark.read.parquet("data/curated/imdb/titles").as[Title]
+titles.filter(t => t.startYear >= 2000 && t.averageRating >= 8.0)
+      .groupBy("titleType")
+      .avg("averageRating")
+```
+
+Ese fragmento se ejecuta en `.\install\run.ps1 shell` si el equipo quiere una captura real de `Dataset`. Es opcional, porque el taller solo exige el cuadro y no un ejemplo ejecutable en Scala.
 
 ## Metodología de trabajo
 
-El equipo trabaja en seis fases cortas. La primera cierra la conformación y el correo al docente antes del 28 de octubre. La segunda elige el tema con la lista anterior y justifica la decisión. La tercera construye la ingesta y la muestra reproducible. La cuarta escribe la demostración de RDD y verifica las ocho funciones. La quinta hace lo propio con DataFrame y recoge los tiempos. La sexta redacta el informe, arma las diapositivas y ensaya la exposición con cronómetro.
+El equipo trabaja en seis fases cortas. La primera cierra la conformación y envía el correo con la lista de integrantes. La segunda confirma el tema y deja escrita la justificación. La tercera construye la descarga y la curaduría, que es el paso más lento por el tamaño del archivo. La cuarta escribe la demo de RDD y verifica las ocho funciones. La quinta hace lo mismo con DataFrame y recoge los tiempos. La sexta redacta el informe, arma las diapositivas y ensaya con cronómetro.
 
-Los roles se reparten sin excluir a nadie de la exposición. Una persona coordina entregas y correos, otra responde por la ingesta, otra por la demostración de RDD, otra por la de DataFrame y otra por el informe y las diapositivas. Todos leen el código de los demás antes del ensayo, porque cualquier integrante puede recibir una pregunta sobre cualquier parte.
+Los roles se reparten sin excluir a nadie de la exposición. Una persona coordina entregas y correos, otra responde por la ingesta, otra por la demo de RDD, otra por la de DataFrame y otra por el informe y las diapositivas. Cuando el equipo tiene solo dos integrantes, cada uno asume dos bloques y el quinto se reparte por mitades. Todos leen el código de los demás antes del ensayo, porque cualquier integrante puede recibir una pregunta sobre cualquier parte.
 
 ## Plan de la exposición
 
 | Minuto | Contenido | Quién |
 | --- | --- | --- |
-| 0 a 1 | Portada, objetivo y tema elegido | Coordinación |
+| 0 a 1 | Portada, objetivo y por qué IMDb | Coordinación |
 | 1 a 3 | Cuadro comparativo entre las tres interfaces | Redacción |
-| 3 a 6 | Demostración de RDD y explicación de las ocho funciones | RDD |
-| 6 a 9 | Demostración de DataFrame y plan de ejecución | DataFrame |
+| 3 a 6 | Demo de RDD y explicación de las ocho funciones | RDD |
+| 6 a 9 | Demo de DataFrame, plan y tiempos | DataFrame |
 | 9 a 10 | Conclusiones, límites y cierre | Todo el equipo |
 
-El ensayo se hace al menos dos veces con cronómetro, porque la tolerancia es de dos minutos y cada minuto extra descuenta dos puntos. Las diapositivas muestran capturas reales de la ejecución y no solo código.
+El ensayo se hace al menos dos veces con cronómetro, porque la tolerancia es de dos minutos y cada minuto extra descuenta dos puntos. Las diapositivas muestran capturas reales de la ejecución y no solo código, y cada bloque de código aparece con su salida al lado.
 
 ## Riesgos y mitigación
 
 | Riesgo | Señal temprana | Mitigación |
 | --- | --- | --- |
-| Límite de la API | Respuestas 429 o esperas largas | Cachear el crudo y descargarlo una sola vez |
-| Volumen excesivo | Descarga de más de 1 GB | Elegir un mes, una ciudad o un rango de fechas |
-| Licencia incompatible | Texto restrictivo en el portal | Publicar solo la muestra y citar la fuente |
-| Memoria insuficiente | Error de paginación al arrancar | Mantener el heap en 1 GB y reducir particiones |
-| Tiempo de exposición | Ensayo por encima de 12 minutos | Recortar la demostración y dejar el detalle en el informe |
-| API caída | Error 5xx el día previo | Guardar el crudo y trabajar desde la caché |
+| Memoria insuficiente | `OutOfMemoryError` o paginación al arrancar | Mantener el filtro de mil votos y el heap en 1 GB |
+| Descarga lenta | Menos de 1 MB por segundo | Reanudar por rango y conservar el crudo comprimido |
+| Disco lleno | Menos de 2 GB libres | Conservar solo el gzip y borrar los archivos parciales |
+| Nulo mal leído | `\N` aparece como texto en los resultados | Reemplazar por nulo durante la curaduría |
+| Licencia | Texto restrictivo en el sitio | Publicar solo la muestra y citar la fuente |
+| Tiempo de exposición | Ensayo por encima de 12 minutos | Recortar la demo y dejar el detalle en el informe |
+| Sitio caído | Error 5xx el día previo | Trabajar desde la caché local y el manifiesto |
 
 ## Entorno de trabajo
 
-Se necesita Windows 10 u 11, PowerShell 5.1 o superior, unos 3 GB libres y conexión durante la primera instalación. No hace falta ser administrador ni tener Java o Python instalados.
+Se necesita Windows 10 u 11, PowerShell 5.1 o superior, unos 4 GB libres y conexión durante la primera instalación. No hace falta ser administrador ni tener Java o Python instalados, y tampoco hace falta un gestor de paquetes.
 
 ```powershell
 .\install\install-spark.ps1
 .\install\verify-install.ps1
 .\install\run.ps1 status
 ```
+
+El instalador descarga con `curl.exe` y usa `Invoke-WebRequest` como respaldo, extrae con `tar.exe` y `Expand-Archive`, y todo eso viene incluido en Windows 10 1803 o superior. Tampoco instala git, porque cuando falta descarga `winutils.exe` y `hadoop.dll` directamente desde el repositorio y verifica su SHA256. Git solo se necesita para clonar el repositorio, y quien no lo tenga puede bajar el ZIP desde GitHub.
 
 Los scripts calculan la raíz desde su propia ubicación, así que el repositorio funciona en cualquier carpeta, unidad y usuario. La primera ejecución tarda entre 10 y 20 minutos y las siguientes omiten lo que ya existe.
 
@@ -207,19 +288,32 @@ El flujo `.github/workflows/installer.yml` cubre sintaxis y pruebas Pester, inst
 Spark/
 ├─ .github/workflows/installer.yml   Integracion continua
 ├─ install/                          Instalador, verificacion y lanzadores
-├─ scripts/                          Ingesta y curacion de [tema]
+├─ scripts/                          Descarga, curaduria y muestra de IMDb
 ├─ data/
-│  ├─ raw/[tema]/                    Crudo, ignorado por git
-│  ├─ curated/[tema]/                Tablas limpias, ignoradas por git
+│  ├─ raw/imdb/                      TSV comprimido, ignorado por git
+│  ├─ curated/imdb/                  Parquet y TSV curados, ignorado por git
 │  └─ sample/                        Muestra versionada
-├─ src/                              Demos ejecutables en Python
-├─ notebooks/                        Cuadernos de las demos
-├─ tests/                            Trabajo de humo y pruebas Pester
-└─ slides/                           Presentacion
+├─ src/                              rdd_lab.py y dataframe_lab.py
+├─ informe/                          Informe en PDF y figuras
+├─ diapositivas/                     Presentacion en PDF
+├─ tests/                            Humo, comprobación de datos y Pester
+└─ README.md                         Este documento
 ```
 
-Las carpetas `scripts`, `notebooks` y `slides` aparecen en el plan y se crean cuando empieza cada fase.
+Las carpetas `informe` y `diapositivas` se crean cuando empieza esa fase.
 
-## Pendientes
+## Estado
 
-Falta elegir el tema entre los candidatos, escribir los tres scripts de ingesta con el marcador `[tema]`, implementar las dos demostraciones, completar el cuadro comparativo con las mediciones, redactar el informe y preparar las diapositivas. También queda pendiente confirmar con el docente qué funciones de DataFrame se vieron en clase y la fecha exacta de la exposición.
+| Parte | Estado |
+| --- | --- |
+| Instalador, verificación y flujo de integración | Terminado y verificado con 12 comprobaciones |
+| Documento único con el enunciado y el plan | Terminado |
+| Descarga y curaduría de IMDb | Terminada, 71.355 títulos y 18,8 MB |
+| Muestra versionada | Terminada, 5.000 filas y 479 KB |
+| Comprobación de datos | Terminada, siete verificaciones en verde |
+| Demo con RDD | Pendiente, con las ocho funciones ya elegidas |
+| Demo con DataFrame | Pendiente, con las nueve funciones ya elegidas |
+| Cuadro comparativo con mediciones | Pendiente de la ejecución |
+| Informe y diapositivas | Pendientes |
+
+El siguiente paso es escribir `src\rdd_lab.py`, que ya tiene las ocho funciones elegidas y los TSV curados como entrada. Después sigue `src\dataframe_lab.py` con las nueve funciones, y la medición de ambas alimenta el cuadro comparativo y el informe.
