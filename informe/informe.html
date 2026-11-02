@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Laboratorio 05 de Apache Spark</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 18mm 18mm; }
+  html { font-size: 10.5pt; }
+  body { font-family: Georgia, "Times New Roman", serif; color: #1b1d20; line-height: 1.58; margin: 0; }
+  h1, h2, h3, h4 { font-family: "Segoe UI", Helvetica, Arial, sans-serif; color: #14352a; }
+  p { margin: 0 0 9px 0; text-align: justify; hyphens: auto; }
+  strong { color: #14352a; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 0.88em; background: #f2f5f4; padding: 1px 3px; border-radius: 2px; }
+
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; }
+  .cover .overline { font-family: "Segoe UI", sans-serif; font-size: 9pt; letter-spacing: 3px; text-transform: uppercase; color: #1f6f4a; }
+  .cover h1 { font-size: 34pt; line-height: 1.05; margin: 10px 0 0 0; letter-spacing: -0.5px; }
+  .cover .subtitle { font-size: 13pt; color: #3d454c; margin-top: 14px; max-width: 130mm; line-height: 1.4; }
+  .cover .rule { height: 3px; background: #1f6f4a; width: 60mm; margin: 22px 0 0 0; }
+  .cover table { border: none; font-size: 10pt; width: 120mm; }
+  .cover table td { border: none; padding: 3px 0; background: none !important; font-family: "Segoe UI", sans-serif; }
+  .cover table td:first-child { color: #6a7279; width: 34mm; font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; }
+  .placeholder { color: #9aa2a9; font-style: italic; }
+  .cover .foot { font-size: 9pt; color: #6a7279; font-family: "Segoe UI", sans-serif; border-top: 1px solid #d8dde2; padding-top: 8px; }
+
+  h2 { font-size: 15pt; margin: 26px 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #1f6f4a; page-break-after: avoid; }
+  h2 .n { color: #1f6f4a; margin-right: 8px; }
+  h3 { font-size: 11.5pt; margin: 18px 0 7px 0; page-break-after: avoid; }
+  h4 { font-size: 10.5pt; margin: 14px 0 6px 0; color: #1f6f4a; page-break-after: avoid; }
+
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 12px 0; font-family: "Segoe UI", sans-serif; font-size: 8.7pt; page-break-inside: avoid; }
+  th { background: #1f6f4a; color: #ffffff; text-align: left; padding: 6px 7px; font-weight: 600; vertical-align: bottom; }
+  td { padding: 5px 7px; border-bottom: 1px solid #e3e7ea; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f6f9f7; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  figure { margin: 16px 0 18px 0; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; }
+  figcaption { font-size: 8.6pt; color: #5f6670; margin-top: 7px; font-family: "Segoe UI", sans-serif; line-height: 1.4; }
+
+  pre { background: #f6f8f9; border: 1px solid #e1e6ea; border-left: 3px solid #1f6f4a; padding: 9px 12px; font-family: Consolas, "Courier New", monospace; font-size: 8pt; line-height: 1.4; page-break-inside: avoid; margin: 10px 0 8px 0; white-space: pre; }
+  pre.wide { font-size: 7.2pt; line-height: 1.35; }
+
+  .callout { background: #eef4f0; border-left: 3px solid #1f6f4a; padding: 9px 14px; margin: 14px 0 16px 0; page-break-inside: avoid; }
+  .callout p { margin: 0; font-size: 9.8pt; }
+  .callout .tag { font-family: "Segoe UI", sans-serif; font-size: 8pt; text-transform: uppercase; letter-spacing: 1.2px; color: #1f6f4a; display: block; margin-bottom: 4px; }
+
+  ul, ol { margin: 6px 0 12px 0; padding-left: 20px; }
+  li { margin-bottom: 5px; text-align: justify; }
+
+  .kv { font-family: "Segoe UI", sans-serif; font-size: 8.8pt; }
+  .refs p { text-indent: -18px; padding-left: 18px; font-size: 9.4pt; margin-bottom: 7px; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div>
+    <div class="overline">Laboratorio 05</div>
+    <h1>Apache Spark</h1>
+    <div class="subtitle">Cuadro comparativo entre RDD, DataFrame y Dataset, con una demostración de cada interfaz y una medición de la misma consulta por tres caminos sobre el catálogo público de IMDb</div>
+    <div class="rule"></div>
+  </div>
+  <table>
+    <tr><td>Asignatura</td><td class="placeholder">[asignatura]</td></tr>
+    <tr><td>Institución</td><td class="placeholder">[institución]</td></tr>
+    <tr><td>Docente</td><td class="placeholder">[docente]</td></tr>
+    <tr><td>Integrantes</td><td class="placeholder">[integrante 1]</td></tr>
+    <tr><td></td><td class="placeholder">[integrante 2]</td></tr>
+    <tr><td>Entrega</td><td class="placeholder">[fecha]</td></tr>
+  </table>
+  <div class="foot">Apache Spark 3.3.4 · OpenJDK 11 · Python 3.10 · Windows 11</div>
+</section>
+
+<h2 style="margin-top:0">Resumen</h2>
+
+<p>Este informe documenta el laboratorio 05 de Apache Spark resuelto sobre el catálogo público de IMDb con la pila exacta que pide el enunciado. El trabajo cubre los cinco puntos de la asignación, que son el cuadro comparativo entre las tres interfaces, la demostración con RDD, la demostración con DataFrame, la conformación del equipo y el guion de la exposición. La contribución propia es una medición de la misma consulta por tres caminos, RDD sobre texto, DataFrame sobre el mismo texto y DataFrame sobre Parquet, que separa lo que aporta el motor de lo que aporta el formato de almacenamiento. Sobre 71.355 títulos y 1.727.597 calificaciones, el primer camino tarda 51.124 milisegundos, el segundo 2.714 y el tercero 1.357.</p>
+
+<p>El informe también recoge cuatro dificultades que no aparecen en la teoría y que cambiaron el código durante la construcción. La primera es una carrera en el canal del proceso trabajador de Python sobre Windows que obliga a evitar <code>first()</code> sobre archivos grandes. La segunda es la memoria, porque doce núcleos con un giga de heap reparten tan poco que el trabajo aborta. La tercera es que los módulos del directorio <code>src</code> no llegan a los trabajadores sin <code>addPyFile</code>. La cuarta es que la función de correlación lee los nulos como cero y devuelve un número equivocado sin avisar. Las tres últimas tienen arreglo y la primera tiene una explicación, y las cuatro quedan documentadas porque son el tipo de error que se repite en silencio.</p>
+
+<p class="kv"><strong>Palabras clave.</strong> Apache Spark, RDD, DataFrame, Dataset, PySpark, Parquet, IMDb, evaluación de rendimiento.</p>
+
+<h2><span class="n">1</span>Introducción</h2>
+
+<h3>1.1 Contexto</h3>
+
+<p>Apache Spark nació en 2010 como respuesta a una limitación concreta de MapReduce, la obligación de escribir cada etapa intermedia en disco. La idea central fue mantener los datos en memoria y describir el cómputo como una cadena de transformaciones perezosas, de modo que el motor pudiera reorganizar el trabajo antes de ejecutarlo. Esa idea se materializó primero en los RDD y después en las interfaces tabulares, que añadieron un esquema, un optimizador y un formato de serialización binaria.</p>
+
+<p>Hoy conviven tres formas de programar sobre el mismo motor. Los RDD ofrecen control fino sobre la distribución de los datos y ninguna ayuda para interpretarlos. Los DataFrame ofrecen columnas nombradas y dejan el plan en manos de Catalyst. Los Dataset añaden tipos estáticos y codificadores, pero solo existen en Scala y Java. Elegir entre las tres no es una cuestión de gusto, sino de qué garantías ofrece cada una y a qué costo.</p>
+
+<h3>1.2 Objetivos</h3>
+
+<p>El objetivo general es construir un caso completo y reproducible que permita comparar las tres interfaces con evidencia propia y no solo con la documentación. Los objetivos específicos son los siguientes.</p>
+
+<ol>
+  <li>Instalar Spark 3.3.4 con JDK 11 y Python 3.10 desde cero, sin supuestos sobre la ruta del repositorio ni sobre el nombre del usuario.</li>
+  <li>Preparar un conjunto de datos real, grande y con estructura suficiente para que las diferencias entre interfaces se noten.</li>
+  <li>Escribir una demostración con RDD que use cuatro transformaciones y cuatro acciones distintas de las vistas en clase.</li>
+  <li>Escribir una demostración con DataFrame que combine las funciones de clase con cuatro funciones investigadas por el equipo.</li>
+  <li>Medir la misma consulta por tres caminos y explicar de dónde sale cada diferencia.</li>
+  <li>Documentar los hallazgos, armar las diapositivas y ensayar la exposición dentro de la ventana de ocho a doce minutos.</li>
+</ol>
+
+<h3>1.3 Alcance y límites</h3>
+
+<p>Todo el trabajo corre en un solo equipo con 8 GB de memoria y 12 procesadores lógicos, así que no se levanta un clúster y no se prueba el reparto real entre máquinas. El modo local con dos hilos basta para que aparezcan los intercambios de datos y para que las diferencias de tiempo sean visibles, aunque los valores absolutos dependan de esta máquina y no sean trasladables a un servidor. Las versiones están fijadas a propósito, porque el objetivo es reproducir el entorno de la asignatura y no el más reciente.</p>
+
+<h2><span class="n">2</span>El conjunto de datos</h2>
+
+<h3>2.1 Origen y licencia</h3>
+
+<p>IMDb publica dos archivos que cubren todo lo que el taller necesita y que se descargan sin clave ni registro. El primero describe cada título con su clave, su tipo, su año, su duración y sus géneros. El segundo añade la nota media y el número de votos para los títulos que tienen suficientes calificaciones. Los dos vienen en TSV con cabecera y usan la secuencia <code>\N</code> para el valor nulo, un detalle que se convierte en fuente de errores si se ignora.</p>
+
+<table>
+  <thead><tr><th>Archivo</th><th class="num">Comprimido</th><th class="num">Sin comprimir</th><th class="num">Filas</th><th>Contenido</th></tr></thead>
+  <tbody>
+    <tr><td><code>title.basics.tsv.gz</code></td><td class="num">219 MB</td><td class="num">1,12 GB</td><td class="num">12.916.450</td><td>Clave, tipo, título, año, duración y géneros</td></tr>
+    <tr><td><code>title.ratings.tsv.gz</code></td><td class="num">8,3 MB</td><td class="num">30 MB</td><td class="num">1.727.597</td><td>Clave, nota media y número de votos</td></tr>
+  </tbody>
+</table>
+
+<p>La licencia permite el uso personal y no comercial, de modo que el repositorio publica solo una muestra de 5.000 filas y el informe cita la fuente. El crudo completo y el conjunto curado quedan fuera del control de versiones, y un manifiesto con URL, tamaño, fecha y SHA256 permite reconstruirlos sin ambigüedad.</p>
+
+<h3>2.2 Curaduría</h3>
+
+<p>La curaduría aplica cuatro reglas sobre el archivo original. Descarta las filas sin clave, traduce <code>\N</code> a nulo, convierte años y duraciones a enteros y conserva los títulos con mil votos o más salvo los episodios de serie. El último filtro es el que hace viable el ejercicio, porque los episodios son la mayor parte del archivo y aportan poco a las preguntas del taller. Con esas reglas quedan 71.355 títulos de 9 tipos distintos repartidos en 16 décadas.</p>
+
+<p>La tabla de calificaciones no se filtra y conserva las 1.727.597 filas completas. Esa asimetría es deliberada, porque el <code>join</code> de la demostración con RDD debe mostrar tanto las claves que emparejan como las que sobran, y un conjunto ya filtrado escondería justamente el fenómeno que se quiere explicar. El resultado son 71.355 pares emparejados y 1.656.242 claves sin título curado.</p>
+
+<h3>2.3 Esquema</h3>
+
+<p>La curaduría conserva los nombres originales y añade dos columnas derivadas. La tabla fija el tipo de cada una y el uso que tiene en las demostraciones.</p>
+
+<table>
+  <thead><tr><th>Columna</th><th>Tipo</th><th>Origen</th><th>Uso en las demostraciones</th></tr></thead>
+  <tbody>
+    <tr><td><code>tconst</code></td><td>texto</td><td>basics y ratings</td><td>Clave del <code>join</code> y del <code>partitionBy</code></td></tr>
+    <tr><td><code>titleType</code></td><td>texto</td><td>basics</td><td><code>countByValue</code>, <code>pivot</code> y filtros</td></tr>
+    <tr><td><code>primaryTitle</code></td><td>texto</td><td>basics</td><td><code>regexp_replace</code> y muestras</td></tr>
+    <tr><td><code>startYear</code></td><td>entero</td><td>basics</td><td><code>Window</code> por década y filtro temprano</td></tr>
+    <tr><td><code>runtimeMinutes</code></td><td>entero</td><td>basics</td><td>Correlación con la nota</td></tr>
+    <tr><td><code>genres</code></td><td>texto con comas</td><td>basics</td><td><code>explode</code> y <code>pivot</code></td></tr>
+    <tr><td><code>averageRating</code></td><td>decimal</td><td>ratings</td><td><code>takeOrdered</code> y <code>Window</code></td></tr>
+    <tr><td><code>numVotes</code></td><td>entero</td><td>ratings</td><td><code>aggregate</code> y ranking</td></tr>
+    <tr><td><code>decade</code></td><td>entero</td><td>derivada de <code>startYear</code></td><td>Agrupación por periodo y <code>Window</code></td></tr>
+  </tbody>
+</table>
+
+<p>El conjunto curado ocupa 18,8 MB en Parquet y 54,7 MB en texto plano, con 5,9 MB para los títulos y 48,8 MB para las calificaciones. Esa diferencia de casi tres veces es la primera pista de por qué el formato importa, y la medición de la sección 7 la cuantifica.</p>
+
+<h3>2.4 Muestra versionada</h3>
+
+<p>El repositorio guarda 5.000 filas en <code>data/sample/imdb_sample.csv</code>, con 479 KB, elegidas de forma determinista para que cualquiera pueda repetir la selección. La muestra no alimenta las demostraciones, que trabajan con el conjunto completo, y existe solo para que el proyecto sea inspeccionable sin descargar un giga. Los siete controles de <code>tests/check_data.py</code> verifican el conteo de filas, la ausencia de claves duplicadas, los rangos de nota y de votos, y la coincidencia entre el Parquet y el texto.</p>
+
+<h2><span class="n">3</span>Arquitectura de la solución</h2>
+
+<h3>3.1 Instalador</h3>
+
+<p>El instalador es la pieza que hace reproducible todo lo demás. Descarga Spark 3.3.4, el JDK 11 de Temurin y los binarios de winutils en una carpeta local del usuario, crea un entorno virtual de Python 3.10 y escribe un archivo de entorno que se carga en cada ejecución. No pide permisos de administrador, no toca el <code>JAVA_HOME</code> de la máquina y no depende de que el repositorio esté en una ruta concreta.</p>
+
+<p>La portabilidad se resuelve calculando todas las rutas desde la ubicación del propio script y guardando el resultado en <code>install/spark-env.ps1</code>, que está ignorado por git. El lanzador <code>install/run.ps1</code> carga ese archivo y fija la memoria del controlador antes de arrancar la máquina virtual, de modo que ninguna demostración necesita argumentos adicionales. La verificación posterior ejecuta doce comprobaciones y la batería de pruebas del instalador suma 38 casos con Pester.</p>
+
+<h3>3.2 Flujo de datos</h3>
+
+<p>El flujo tiene seis estaciones y cada una produce algo que la siguiente consume. El crudo se descarga una sola vez, la curaduría lo convierte en columnas tipadas y las demostraciones leen ese resultado sin tocar la red.</p>
+
+<pre>datasets.imdbws.com
+        |
+        v
+data/raw/imdb/*.tsv.gz  +  manifest.json
+        |
+        v
+data/curated/imdb/titles/  +  ratings/        (Parquet)
+data/curated/imdb/titles.tsv  +  ratings.tsv  (texto plano)
+        |
+        +--&gt; src/rdd_lab.py  ---------&gt; salida por consola
+        |
+        +--&gt; src/dataframe_lab.py ----&gt; salida por consola y plan fisico
+        |
+        +--&gt; src/benchmark.py -------&gt; informe/mediciones.csv
+        |
+        v
+data/sample/imdb_sample.csv
+        |
+        v
+informe/informe.pdf  +  diapositivas/presentacion.pdf</pre>
+
+<p>La descarga se reanuda desde el último byte cuando se interrumpe, gracias a una petición por rango sobre el archivo parcial. La curaduría lee el texto por transmisión, sin cargarlo entero en memoria, y escribe Parquet por bloques de 50.000 filas. Ese detalle es el que permite procesar 1,12 GB en un equipo de 8 GB.</p>
+
+<h3>3.3 Organización del código</h3>
+
+<pre>spark-lab05/
+├─ install/       instalador, lanzador, verificacion y pruebas Pester
+├─ scripts/       descarga, curaduria, muestra y utilidades compartidas
+├─ src/           rdd_lab.py, dataframe_lab.py y benchmark.py
+├─ tests/         smoke_test.py y check_data.py
+├─ data/sample/   muestra de 5.000 filas versionada
+├─ informe/       este informe, figuras y mediciones
+└─ diapositivas/  presentacion</pre>
+
+<p>El código sigue un presupuesto de complejidad explícito. Ninguna función pasa de 40 líneas, ninguna anidación supera dos niveles, no hay clases ni decoradores, y todas las dependencias ya vienen con Spark o con el entorno del laboratorio. Las tres piezas ejecutables suman 40 funciones y la más larga tiene 28 líneas. El objetivo no es lucir estilo, sino que cualquier integrante pueda explicar cualquier bloque sin preparación previa.</p>
+
+<h2><span class="n">4</span>RDD, DataFrame y Dataset</h2>
+
+<h3>4.1 Criterios de comparación</h3>
+
+<p>Comparar las tres interfaces exige fijar antes qué se mira. Los seis criterios que usa este trabajo son el nivel de abstracción, el tipado, la optimización, la serialización, la disponibilidad en cada lenguaje y el costo de escritura. Los cuatro primeros vienen de la documentación de Spark y de los artículos originales, y los dos últimos se apoyan en la experiencia de este laboratorio.</p>
+
+<h3>4.2 Cuadro comparativo</h3>
+
+<table class="wide">
+  <thead><tr><th>Criterio</th><th>RDD</th><th>DataFrame</th><th>Dataset</th></tr></thead>
+  <tbody>
+    <tr><td>Nivel de abstracción</td><td>Colección distribuida de objetos</td><td>Tabla con esquema y nombres de columna</td><td>Tabla tipada con un codificador</td></tr>
+    <tr><td>Tipado</td><td>Dinámico, el usuario interpreta cada elemento</td><td>Esquema en tiempo de ejecución</td><td>Estático en Scala y Java</td></tr>
+    <tr><td>Verificación en compilación</td><td>No existe</td><td>No existe</td><td>La ofrece el compilador</td></tr>
+    <tr><td>Optimización</td><td>Ninguna, el usuario decide el plan</td><td>Catalyst y Tungsten</td><td>Catalyst y Tungsten con codificadores</td></tr>
+    <tr><td>Serialización</td><td>Java o Kryo</td><td>Binaria de Tungsten</td><td>Binaria guiada por el codificador</td></tr>
+    <tr><td>API disponible en Python</td><td>Sí</td><td>Sí</td><td>No</td></tr>
+    <tr><td>Casos de uso</td><td>Control fino y datos sin estructura</td><td>ETL, SQL y analítica tabular</td><td>Dominios tipados sobre la JVM</td></tr>
+    <tr><td>Depuración</td><td>Errores en tiempo de ejecución</td><td>Plan físico legible con <code>explain</code></td><td>Errores de tipo antes de ejecutar</td></tr>
+    <tr><td>Medición en la misma consulta</td><td>51.124 ms sobre TSV</td><td>2.714 ms sobre TSV y 1.357 ms sobre Parquet</td><td>No aplica en Python</td></tr>
+    <tr><td>Líneas de código</td><td>Más, por el parseo manual</td><td>Menos, por las columnas nombradas</td><td>Intermedio, con clases del dominio</td></tr>
+  </tbody>
+</table>
+
+<p>La fila de medición es la única que no se puede copiar de la documentación, y por eso es la que da valor al cuadro. Las tres cifras salen de la misma consulta, la nota media ponderada por votos agrupada por década, ejecutada sobre los mismos 71.355 títulos con las mismas ocho particiones de intercambio. La diferencia entre las dos primeras columnas mide el efecto del motor y la diferencia entre las dos últimas mide el efecto del formato.</p>
+
+<h3>4.3 Por qué Dataset no existe en Python</h3>
+
+<p>PySpark no expone <code>Dataset</code>, porque el tipo pertenece a Scala y Java y su garantía depende de un <code>Encoder</code> que el compilador pueda resolver. En Python toda la API tabular pasa por <code>DataFrame</code>, que equivale a un <code>Dataset[Row]</code> sin tipado estático. La consecuencia práctica es que la comparación en este lenguaje se reduce a dos columnas y la tercera se explica con código de Scala.</p>
+
+<pre>case class Title(tconst: String, titleType: String, startYear: Int, averageRating: Double)
+
+val titles = spark.read.parquet("data/curated/imdb/titles").as[Title]
+
+titles.filter(t =&gt; t.startYear &gt;= 2000 &amp;&amp; t.averageRating &gt;= 8.0)
+      .groupBy("titleType")
+      .avg("averageRating")</pre>
+
+<p>El fragmento se ejecuta en la consola de Scala del propio laboratorio, con <code>.\install\run.ps1 shell</code>. La diferencia con la versión de Python no está en el resultado, que es el mismo, sino en cuándo se descubre un error. Si el campo se llama <code>averageRating</code> y se escribe <code>averageRatings</code>, el compilador de Scala lo rechaza antes de ejecutar, mientras que el mismo error en PySpark aparece como una excepción en tiempo de ejecución, después de haber lanzado el trabajo.</p>
+
+<h3>4.4 Consecuencias prácticas</h3>
+
+<p>La conclusión no es que una interfaz sea mejor que otra, sino que cada una paga un precio distinto. El RDD paga en líneas de código y en tiempo, porque cada elemento se transporta como un objeto de Python y el motor no puede mirar dentro. El DataFrame paga en control, porque el optimizador decide el plan y a veces conviene intervenir con <code>repartition</code> o con sugerencias. El Dataset paga en flexibilidad, porque obliga a definir tipos y solo está disponible en la JVM.</p>
+
+<div class="callout">
+  <span class="tag">Regla que se desprende</span>
+  <p>Cuando el dato tiene forma de tabla, el DataFrame gana casi siempre. El RDD se justifica cuando el dato no tiene esquema, cuando hace falta un particionador propio que sobreviva entre etapas o cuando se trabaja con grafos y con operaciones que la API tabular no cubre.</p>
+</div>
+
+<h2><span class="n">5</span>Demostración con RDD</h2>
+
+<h3>5.1 Funciones elegidas</h3>
+
+<p>La demostración lee el TSV curado como texto para mostrar el costo de interpretar cada línea a mano, y después encadena ocho funciones sobre pares clave valor. Cuatro son transformaciones y cuatro son acciones, y ninguna aparece en las listas de clase, que son <code>map</code>, <code>filter</code>, <code>flatMap</code> y <code>reduceByKey</code> por un lado y <code>collect</code>, <code>count</code>, <code>take</code> y <code>reduce</code> por el otro. <code>map</code> y <code>filter</code> se usan como apoyo para parsear y limpiar, pero no cuentan como las funciones nuevas.</p>
+
+<table>
+  <thead><tr><th>Función</th><th>Tipo</th><th>Qué hace en la demostración</th><th>Resultado real</th></tr></thead>
+  <tbody>
+    <tr><td><code>mapPartitionsWithIndex</code></td><td>Transformación</td><td>Recorre cada partición con su índice y cuenta elementos</td><td>Ocho conteos de 8.721 a 9.039</td></tr>
+    <tr><td><code>distinct</code></td><td>Transformación</td><td>Reduce los tipos de título a su conjunto único</td><td>Nueve tipos</td></tr>
+    <tr><td><code>partitionBy</code></td><td>Transformación</td><td>Reparte por hash de <code>tconst</code> antes del <code>join</code></td><td>Ocho particiones sin huecos</td></tr>
+    <tr><td><code>join</code></td><td>Transformación</td><td>Cruza títulos con calificaciones por <code>tconst</code></td><td>71.355 pares en 39,5 s</td></tr>
+    <tr><td><code>takeOrdered</code></td><td>Acción</td><td>Devuelve los diez títulos con más votos</td><td>Diez tuplas con sus votos</td></tr>
+    <tr><td><code>aggregate</code></td><td>Acción</td><td>Calcula la nota media ponderada por votos</td><td>7,152 sobre 1.503.735.096 votos</td></tr>
+    <tr><td><code>countByValue</code></td><td>Acción</td><td>Cuenta títulos por tipo sin <code>reduceByKey</code></td><td>Nueve tipos con su conteo</td></tr>
+    <tr><td><code>foreachPartition</code></td><td>Acción</td><td>Escribe un resumen por partición</td><td>Ocho líneas en <code>resumen_particiones.txt</code></td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 Salida real</h3>
+
+<p>La corrida completa tarda alrededor de 120 segundos y unos 40 de ellos son el <code>join</code>. El extracto siguiente reproduce la consola sin recortes de contenido, y la salida íntegra está en el anexo A.</p>
+
+<pre>[rdd] leidos 71355 titulos y 1727597 notas
+[rdd] titles ocupa 8 particiones con [8883, 9014, 8897, 8897, 8884, 8924, 8885, 8971] elementos
+[rdd] distinct deja 9 tipos de titulo
+[rdd] partitionBy ocupa 8 particiones con [8918, 9025, 9004, 8923, 8906, 8721, 9039, 8819] elementos
+[rdd] join empareja 71355 pares en 39.5 s
+[rdd] takeOrdered devuelve los 10 titulos con mas votos
+[rdd]   The Shawshank Redemption                9.3  3260058
+[rdd]   The Dark Knight                         9.1  3245703
+[rdd]   Inception                               8.8  2885372
+[rdd] aggregate calcula la nota media ponderada 7.152 sobre 1503735096 votos
+[rdd] demo terminada en 121.3 s</pre>
+
+<figure>
+  <img src="figuras/top_votos.png" alt="Diez títulos con más votos">
+  <figcaption>Figura 1. Los diez títulos con más votos, obtenidos con <code>takeOrdered</code> en la demostración con RDD. La etiqueta de cada barra es la nota media del título.</figcaption>
+</figure>
+
+<p>El reparto de elementos es casi uniforme, entre 8.721 y 9.039 por partición, porque el archivo de texto se divide por bytes y las líneas tienen un largo parecido. Después de <code>partitionBy</code> el reparto sigue parejo, con una variación de menos del 4 por ciento, lo que confirma que la función de hash distribuye bien las claves. Ese equilibrio es lo que hace que <code>takeOrdered</code> pueda resolverse con un montón pequeño por partición en lugar de ordenar todo el conjunto.</p>
+
+<h3>5.3 Particionamiento e intercambio</h3>
+
+<p>La demostración imprime el número de particiones antes y después de cada paso para que se vea dónde aparece un intercambio de datos. <code>distinct</code> y <code>join</code> lo provocan, y <code>partitionBy</code> lo hace una sola vez para dejar las claves agrupadas. <code>takeOrdered</code> no lo provoca, porque se implementa con un <code>mapPartitions</code> que calcula el montón local y un <code>reduce</code> que mezcla los montones parciales en el controlador.</p>
+
+<p>Ese detalle explica por qué <code>takeOrdered</code> es barato y por qué conviene usarlo en lugar de <code>sortBy</code> cuando solo se necesitan los primeros elementos. También explica por qué <code>take</code> y <code>first</code> son delicados sobre archivos grandes en Windows, un asunto que la sección 8.1 trata con detalle.</p>
+
+<h3>5.4 El caso de partitionBy con join</h3>
+
+<div class="callout">
+  <span class="tag">Hallazgo</span>
+  <p>En PySpark, <code>partitionBy</code> no ahorra el intercambio del <code>join</code> posterior. La llamada a <code>join</code> se traduce en <code>python_join</code>, que convierte las dos ramas en pares, las une con <code>union</code> y las agrupa con <code>groupByKey</code>. Ese <code>groupByKey</code> crea un particionador nuevo y descarta el anterior, de modo que el trabajo de <code>partitionBy</code> se paga y no se aprovecha.</p>
+</div>
+
+<p>La comprobación está en el código de la biblioteca, no en la intuición. El archivo <code>pyspark/join.py</code> de la versión 3.3.4 define <code>_do_python_join</code> como una unión de las dos ramas etiquetadas seguida de <code>groupByKey(numPartitions)</code>, y <code>join</code> simplemente delega en esa función. En Scala ocurre lo contrario, porque <code>PairRDDFunctions.join</code> consulta el particionador de ambos lados y, si coinciden, evita el intercambio. La diferencia no es una optimización menor, cambia el consejo que se le da a quien programa en Python.</p>
+
+<p>La demostración deja el <code>partitionBy</code> en el código porque el enunciado pide cuatro transformaciones y porque el paso sirve para mostrar el reparto por hash, pero el informe advierte que la ganancia no llega. La comprobación se extendió a <code>cogroup</code>, que también se implementa con una unión y un <code>groupByKey</code>, así que en PySpark no hay forma de que un <code>join</code> reaproveche un particionador previo. La alternativa práctica es no pagar dos intercambios, es decir, quitar el <code>partitionBy</code> y dejar que el <code>join</code> haga el suyo, o mover la consulta a Scala, donde <code>PairRDDFunctions.join</code> compara los particionadores de los dos lados y evita el segundo.</p>
+
+<h2><span class="n">6</span>Demostración con DataFrame</h2>
+
+<h3>6.1 Funciones de clase e investigadas</h3>
+
+<p>La demostración responde cinco preguntas con las funciones vistas en clase y cuatro más con funciones investigadas. Cada bloque imprime el nombre de la función y su resultado. El plan físico se muestra solo en el bloque de <code>agg</code>, porque repetirlo nueve veces llenaría la consola sin aportar nada nuevo.</p>
+
+<table>
+  <thead><tr><th>Función</th><th>Origen</th><th>Pregunta que resuelve</th><th>Resultado real</th></tr></thead>
+  <tbody>
+    <tr><td><code>select</code></td><td>Clase</td><td>Proyecta clave, título, año y nota</td><td>5 de 12 columnas</td></tr>
+    <tr><td><code>filter</code></td><td>Clase</td><td>Deja películas desde 1990 con diez mil votos o más</td><td>10.342 filas</td></tr>
+    <tr><td><code>groupBy</code></td><td>Clase</td><td>Agrupa por género y década</td><td>346 combinaciones</td></tr>
+    <tr><td><code>agg</code></td><td>Clase</td><td>Calcula promedio de nota, suma de votos y conteo</td><td>Drama lidera con 780 millones de votos</td></tr>
+    <tr><td><code>orderBy</code></td><td>Clase</td><td>Ordena por nota y desempata por votos</td><td>Diez títulos con nota 10</td></tr>
+    <tr><td><code>Window</code> con <code>row_number</code></td><td>Investigada</td><td>Tres mejores títulos por género</td><td>Podio por cada género</td></tr>
+    <tr><td><code>pivot</code></td><td>Investigada</td><td>Nota media por década y tipo de título</td><td>Tres columnas de tipo</td></tr>
+    <tr><td><code>explode</code> con <code>split</code></td><td>Investigada</td><td>Un renglón por género a partir de la lista</td><td>Base de <code>groupBy</code> y <code>pivot</code></td></tr>
+    <tr><td><code>regexp_replace</code></td><td>Investigada</td><td>Normaliza títulos para detectar repetidos</td><td>4.984 títulos repetidos</td></tr>
+  </tbody>
+</table>
+
+<p>La demostración usa además <code>corr</code> y <code>percentile_approx</code> como refuerzo, sin que reemplacen a las cuatro investigadas. La primera sirve para discutir la relación entre duración y nota, y la segunda para comparar la mediana de votos entre tipos de título.</p>
+
+<h3>6.2 Salida real y plan</h3>
+
+<p>La demostración tarda alrededor de 16 segundos, ocho veces menos que la de RDD sobre el mismo volumen. Buena parte de esa ventaja viene de que lee Parquet en lugar de texto y de que no transporta objetos de Python entre etapas.</p>
+
+<pre>[dataframe] leidos 71355 titulos con nota
+[dataframe] select proyecta 5 de 12 columnas
+[dataframe] filter deja 10342 peliculas desde 1990 con diez mil votos o mas
+[dataframe] groupBy produce 346 combinaciones de genero y decada
+[dataframe] agg calcula nota media, votos y titulos por genero
+[dataframe] orderBy desempata la nota por cantidad de votos
+[dataframe] Window con row_number deja tres titulos por genero
+[dataframe] pivot cruza la decada con tres tipos de titulo
+[dataframe] regexp_replace encuentra 4984 titulos repetidos
+[dataframe] corr sin filtrar nulos da -0.129 porque Spark los lee como cero
+[dataframe] corr entre duracion y nota da -0.056 sobre 68047 titulos
+[dataframe] demo terminada en 15.9 s</pre>
+
+<p>El plan físico del bloque <code>agg</code> muestra las dos etapas de intercambio que Catalyst decide por su cuenta, una para agrupar por género después del <code>explode</code> y otra para ordenar el resultado. La diferencia con la demostración de RDD es que aquí nadie escribió esas etapas, y que el optimizador pudo empujar el filtro y recortar columnas antes de mover datos. Ese recorte es la razón principal de que el mismo trabajo cueste una fracción.</p>
+
+<h3>6.3 Nota, popularidad y ventanas</h3>
+
+<p>El bloque de <code>orderBy</code> devuelve un resultado que conviene mirar con cuidado. Los primeros puestos por nota son títulos recientes con notas de 10 y entre mil y dos mil votos, acompañados de una retransmisión con 27.014 votos y nota perfecta. Ninguno es una película conocida. El bloque de <code>Window</code> confirma el patrón en cada género, porque el podio se llena de títulos con mil votos y nota máxima mientras las obras populares quedan por debajo.</p>
+
+<figure>
+  <img src="figuras/votos_nota.png" alt="Relación entre votos y nota media">
+  <figcaption>Figura 2. Cada celda cuenta títulos con esa combinación de votos y nota, en escala logarítmica de color. La línea naranja es la mediana de nota por tramo de votos. La dispersión se estrecha a medida que crecen los votos, aunque la mediana sube en el extremo derecho.</figcaption>
+</figure>
+
+<p>La figura 2 explica las dos caras del fenómeno. Con pocos votos la nota se dispersa entre 1 y 10, así que basta un puñado de calificaciones altas para llegar al 9,9 y encabezar cualquier orden descendente. Con muchos votos la dispersión se cierra y la mediana sube, porque los títulos que sobreviven a un millón de calificaciones suelen ser buenos. Las dos cosas son ciertas y por eso el podio por nota y el podio por popularidad no coinciden.</p>
+
+<div class="callout">
+  <span class="tag">Decisión de análisis</span>
+  <p>Cuando se ordena por nota conviene exigir un mínimo de votos, y cuando se ordena por popularidad conviene mirar la nota como contexto y no como criterio. El taller conserva <code>numVotes</code> en el esquema justamente para poder hacer esa distinción, y el bloque de <code>orderBy</code> la hace visible al desempatar por votos dentro de la misma nota.</p>
+</div>
+
+<h3>6.4 Del género a la década</h3>
+
+<p>El bloque de <code>pivot</code> cruza la década con tres tipos de título y deja ver que las series mantienen una nota media más alta que las películas en casi todos los periodos. La diferencia ronda el punto completo desde 1960 y se estrecha en la década de 2020, cuando el volumen de producción crece y el promedio se acerca al de las películas. El bloque de <code>regexp_replace</code> normaliza los títulos para quitar puntuación y mayúsculas, y encuentra 4.984 títulos repetidos, con <em>The Oscars</em> a la cabeza de la lista.</p>
+
+<figure>
+  <img src="figuras/decadas.png" alt="Nota ponderada por década">
+  <figcaption>Figura 3. Nota media ponderada por votos en cada década desde 1920, con la media global como referencia, y cantidad de títulos en el panel inferior. Las décadas anteriores a 1920 no aparecen porque no llegan a 350 títulos y su promedio no es representativo.</figcaption>
+</figure>
+
+<p>La figura 3 junta las dos series que explican el resto del informe. La nota media ponderada se mantiene por encima de 7,4 entre 1920 y 1970, baja a 7,27 en los ochenta y termina en 6,86 en la década de 2020, justo cuando el número de títulos se multiplica por siete. La relación no es causal, porque también cambia la forma de calificar y el tipo de producción, pero sirve para mostrar que un promedio simple sobre todo el catálogo esconde una composición muy distinta por periodo.</p>
+
+<h2><span class="n">7</span>Medición de las tres rutas</h2>
+
+<h3>7.1 Método</h3>
+
+<p>La medición vive en <code>src/benchmark.py</code> y ejecuta una sola consulta por tres caminos. La consulta agrupa por década y calcula la suma de nota por votos dividida entre la suma de votos, que es la nota media ponderada. El primer camino usa RDD sobre el TSV, el segundo usa DataFrame sobre el mismo TSV con un esquema explícito y el tercero usa DataFrame sobre el Parquet curado.</p>
+
+<p>Cada camino corre dos veces y se conserva la segunda medición, porque la primera incluye el arranque de la máquina virtual, la compilación de las consultas y el calentamiento de la caché del sistema operativo. Antes de escribir el archivo, el script compara las tres salidas y exige que coincidan en las dieciséis filas con una tolerancia de una centésima. Si alguna ruta se desvía, el programa termina con error y no publica el resultado.</p>
+
+<h3>7.2 Resultados</h3>
+
+<table>
+  <thead><tr><th>Consulta</th><th>Interfaz</th><th>Formato</th><th class="num">Milisegundos</th><th class="num">Respecto a la mejor</th></tr></thead>
+  <tbody>
+    <tr><td><code>nota_ponderada_por_decada</code></td><td>RDD</td><td>TSV</td><td class="num">51.124</td><td class="num">37,7×</td></tr>
+    <tr><td><code>nota_ponderada_por_decada</code></td><td>DataFrame</td><td>TSV</td><td class="num">2.714</td><td class="num">2,0×</td></tr>
+    <tr><td><code>nota_ponderada_por_decada</code></td><td>DataFrame</td><td>Parquet</td><td class="num">1.357</td><td class="num">1,0×</td></tr>
+  </tbody>
+</table>
+
+<figure>
+  <img src="figuras/rutas.png" alt="Tiempos de las tres rutas">
+  <figcaption>Figura 4. Tiempo de la misma consulta por los tres caminos. El panel izquierdo conserva la escala completa para mostrar la brecha entre interfaces y el derecho amplía las dos rutas de DataFrame para mostrar la brecha entre formatos.</figcaption>
+</figure>
+
+<p>Las cifras están en <code>informe/mediciones.csv</code>, que el propio script escribe y que se versiona como evidencia. La medición se repitió en dos sesiones distintas y los tiempos se movieron entre un 1 y un 46 por ciento según la memoria libre del equipo, un detalle que confirma que las cifras absolutas valen dentro de esta máquina y que la comparación solo tiene sentido cuando las tres rutas se miden juntas.</p>
+
+<h3>7.3 Interpretación</h3>
+
+<p>Hay dos factores y conviene no confundirlos. El primero es la interfaz, y explica la diferencia de casi diecinueve veces entre RDD y DataFrame sobre el mismo archivo de texto. El RDD transporta cada línea como una cadena de Python, la interpreta en el proceso trabajador y devuelve objetos que el motor no puede inspeccionar. El DataFrame lee las mismas líneas con un analizador en la JVM, aplica un esquema y mueve datos binarios.</p>
+
+<p>El segundo factor es el formato, y explica la diferencia de dos veces entre los dos caminos de DataFrame. El Parquet guarda tipos, comprime por columnas y permite leer solo las columnas que la consulta necesita, mientras que el TSV obliga a leer la línea completa y a convertir cada campo. La consulta toca tres columnas de diez, así que el ahorro es directo.</p>
+
+<p>La lección práctica es que la elección del formato rinde menos que la elección de la interfaz, pero se acumula con ella. Un equipo que migra de RDD a DataFrame y además cambia el almacenamiento pasa de 51 segundos a poco más de uno, y las dos mejoras son independientes. En un clúster con datos en un sistema distribuido la proporción cambia, aunque la dirección se mantiene.</p>
+
+<h2><span class="n">8</span>Dificultades encontradas</h2>
+
+<h3>8.1 El canal del proceso trabajador en Windows</h3>
+
+<p>La primera versión de la demostración con RDD leía la cabecera con <code>first()</code> y filtraba esa línea del resto. El programa fallaba de forma intermitente con <code>java.net.SocketException: Connection reset by peer</code> sobre el canal de escritura, y el proceso trabajador de Python moría sin dejar rastro. La prueba de humo seguía pasando, de modo que el entorno no era el problema.</p>
+
+<p>El diagnóstico salió de aislar la operación. <code>count()</code> y <code>take(3)</code> funcionaban sobre el mismo archivo, y <code>first()</code> fallaba siempre que la partición superaba cierto tamaño. La causa es que <code>first()</code> pide un elemento y cierra el canal en cuanto lo tiene, mientras que el proceso trabajador sigue escribiendo el resto del bloque. En Windows el cierre llega antes de que termine la escritura y el sistema operativo corta la conexión. La solución fue no usar <code>first()</code> y descartar la cabecera dentro del analizador, comparando el primer campo con el nombre de la columna.</p>
+
+<h3>8.2 Memoria y número de núcleos</h3>
+
+<p>La configuración inicial usaba <code>local[4]</code> y fallaba con errores de reserva de memoria que mencionaban el código 1455. El equipo tiene 12 procesadores lógicos y un giga de heap, así que cada tarea recibe una fracción muy pequeña y el sistema operativo no puede comprometer la memoria que la máquina virtual pide. La solución fue bajar a <code>local[2]</code> y fijar ocho particiones de intercambio, con lo que el trabajo entra sin cambiar el resultado.</p>
+
+<p>El lanzador añade además <code>--driver-memory 1g</code> y <code>-Xms64m</code>, de modo que la memoria se reserva de forma explícita y no depende de la configuración global de la máquina. Ese ajuste es la diferencia entre un taller que corre en cualquier equipo de la sala y uno que solo corre en el equipo de quien lo escribió.</p>
+
+<h3>8.3 Módulos compartidos entre controlador y trabajadores</h3>
+
+<p>La medición reutiliza los analizadores de la demostración con RDD para no duplicar el parseo. La primera versión importaba el módulo y fallaba con <code>ModuleNotFoundError</code> en el trabajador, porque el archivo está en <code>src</code> y esa carpeta solo existe en el proceso controlador. La solución fue registrar el archivo con <code>spark.sparkContext.addPyFile</code> antes de lanzar el trabajo, de modo que Spark lo empaquete y lo envíe a cada trabajador.</p>
+
+<h3>8.4 Los nulos leídos como cero</h3>
+
+<p>La demostración calculaba la correlación entre duración y nota con <code>movies.stat.corr</code> y obtenía menos 0,129. Un cálculo independiente en pandas sobre los mismos datos daba menos 0,056, y la diferencia no era un redondeo. La causa está en que la clase <code>Correlation</code> lee cada celda con <code>getDouble</code>, y ese método devuelve cero cuando el valor es nulo, así que los 3.308 títulos sin duración entraban al promedio como si duraran nada.</p>
+
+<p>La demostración imprime ahora los dos números, el ingenuo y el del filtro <code>isNotNull</code>, y el informe deja constancia porque es el tipo de error que no produce una excepción y por lo tanto pasa desapercibido. La regla que se desprende es simple. Toda función estadística de Spark merece una comprobación previa de nulos y una comparación con un cálculo externo antes de publicar su resultado.</p>
+
+<h2><span class="n">9</span>Conclusiones</h2>
+
+<p>El laboratorio confirma con números propios lo que la documentación sostiene sin medir. Las seis conclusiones siguientes resumen lo aprendido y cada una se apoya en una evidencia que está en el repositorio.</p>
+
+<ol>
+  <li>La interfaz pesa más que el formato. La misma consulta tarda 51.124 milisegundos con RDD y 2.714 con DataFrame sobre el mismo archivo de texto, una diferencia de casi diecinueve veces que no depende del almacenamiento.</li>
+  <li>El formato se suma a la interfaz. Cambiar de TSV a Parquet reduce el tiempo a la mitad sin tocar una línea de la consulta, porque el archivo guarda tipos y permite leer solo las columnas necesarias.</li>
+  <li>El RDD sigue teniendo sentido cuando el dato no tiene esquema o cuando hace falta un particionador propio, pero en Python no conserva ese particionador entre el <code>partitionBy</code> y el <code>join</code>, una diferencia real con Scala que conviene conocer antes de optimizar.</li>
+  <li>El DataFrame no elimina la necesidad de pensar. Catalyst empuja filtros y recorta columnas, pero no avisa cuando la consulta ordena por una nota calculada sobre mil votos, y el resultado es un podio de títulos desconocidos.</li>
+  <li>Las tres dificultades técnicas del laboratorio, la carrera del canal en Windows, la memoria por núcleo y los módulos que no llegan a los trabajadores, se resuelven con cambios pequeños y aparecen solo al ejecutar sobre datos reales.</li>
+  <li>La reproducibilidad no es un adorno. Fijar versiones, registrar el hash de cada descarga y medir dos veces la misma consulta es lo que permite afirmar que las cifras de este informe son comparables entre sí.</li>
+</ol>
+
+<p>El cuadro comparativo y las dos demostraciones cubren los cinco puntos del enunciado. La medición añade una fila que no estaba pedida y que resulta ser la más útil, porque obliga a separar dos efectos que suelen presentarse juntos. La exposición queda armada sobre estas mismas cifras y el ensayo con cronómetro es el último paso antes de la entrega.</p>
+
+<h2><span class="n">10</span>Trabajo futuro</h2>
+
+<p>Quedan tres frentes abiertos. El primero es medir en un clúster pequeño, con dos o tres máquinas, para ver si la proporción entre interfaces se mantiene cuando el intercambio viaja por red. El segundo es probar la API de Dataset en Scala con el mismo esquema, para tener una tercera columna medida y no solo argumentada. El tercero es repetir la consulta con la tabla de calificaciones completa y sin el filtro de mil votos, para cuantificar cuánto del tiempo del <code>join</code> corresponde a las claves que no emparejan.</p>
+
+<p>Ninguno de los tres cambia las conclusiones, pero los tres amplían el cuadro y sirven como continuación natural del taller. El repositorio queda preparado para añadirlos, porque la curaduría es parametrizable y la medición ya compara las salidas antes de publicar cualquier cifra.</p>
+
+<h2><span class="n">11</span>Referencias</h2>
+
+<div class="refs">
+  <p>Zaharia, M., Chowdhury, M., Franklin, M., Shenker, S. y Stoica, I. (2010). <em>Spark: Cluster Computing with Working Sets</em>. Proceedings of the 2nd USENIX Conference on Hot Topics in Cloud Computing.</p>
+  <p>Armbrust, M., Xin, R., Lian, C., Huai, Y., Liu, D., Bradley, J., Meng, X., Kaftan, T., Franklin, M., Ghodsi, A. y Zaharia, M. (2015). <em>Spark SQL: Relational Data Processing in Spark</em>. Proceedings of the 2015 ACM SIGMOD International Conference on Management of Data.</p>
+  <p>Apache Software Foundation. <em>Spark 3.3.4 Documentation</em>. Recuperado de https://spark.apache.org/docs/3.3.4/</p>
+  <p>Apache Software Foundation. <em>RDD Programming Guide</em>. Recuperado de https://spark.apache.org/docs/3.3.4/rdd-programming-guide.html</p>
+  <p>Apache Software Foundation. <em>Spark SQL, DataFrames and Datasets Guide</em>. Recuperado de https://spark.apache.org/docs/3.3.4/sql-programming-guide.html</p>
+  <p>IMDb. <em>IMDb Datasets</em>. Recuperado de https://datasets.imdbws.com/</p>
+  <p>Apache Parquet. <em>Parquet File Format</em>. Recuperado de https://parquet.apache.org/docs/</p>
+</div>
+
+<h2>Anexo A. Salida de la demostración con RDD</h2>
+
+<p>El bloque siguiente reproduce la consola de <code>src/rdd_lab.py</code> sin las líneas de registro de Spark. La corrida completa tarda 121,3 segundos.</p>
+
+<pre class="wide">[rdd] leidos 71355 titulos y 1727597 notas
+[rdd] titles ocupa 8 particiones con [8883, 9014, 8897, 8897, 8884, 8924, 8885, 8971] elementos
+[rdd] distinct deja 9 tipos de titulo
+[rdd] tipos movie, short, tvMiniSeries, tvMovie, tvSeries, tvShort, tvSpecial, video, videoGame
+[rdd] partitionBy ocupa 8 particiones con [8918, 9025, 9004, 8923, 8906, 8721, 9039, 8819] elementos
+[rdd] partitionBy coloca cada tconst en una sola particion por hash
+[rdd] join empareja 71355 pares en 39.5 s
+[rdd] takeOrdered devuelve los 10 titulos con mas votos
+[rdd]   The Shawshank Redemption                9.3  3260058
+[rdd]   The Dark Knight                         9.1  3245703
+[rdd]   Inception                               8.8  2885372
+[rdd]   Breaking Bad                            9.5  2699694
+[rdd]   Game of Thrones                         9.2  2680062
+[rdd]   Fight Club                              8.8  2679053
+[rdd]   Interstellar                            8.7  2628405
+[rdd]   Forrest Gump                            8.8  2549962
+[rdd]   Pulp Fiction                            8.8  2480571
+[rdd]   The Matrix                              8.7  2291134
+[rdd] aggregate calcula la nota media ponderada 7.152 sobre 1503735096 votos
+[rdd] countByValue devuelve 9 tipos
+[rdd]   movie          53380
+[rdd]   short          11214
+[rdd]   tvSeries        2267
+[rdd]   tvMovie         1913
+[rdd]   video           1429
+[rdd]   tvMiniSeries     424
+[rdd]   tvShort          393
+[rdd]   tvSpecial        284
+[rdd]   videoGame         51
+[rdd] foreachPartition dejo 8 lineas en resumen_particiones.txt
+[rdd] demo terminada en 121.3 s</pre>
+
+<p>El archivo <code>resumen_particiones.txt</code> queda en la carpeta curada con una línea por partición, y cada línea informa el número de títulos y la suma de votos de esa partición. La suma total de las ocho líneas coincide con el total que reporta <code>aggregate</code>, lo que confirma que ninguna partición se perdió en el camino.</p>
+
+<h2>Anexo B. Salida de la demostración con DataFrame</h2>
+
+<p>El bloque siguiente reproduce la consola de <code>src/dataframe_lab.py</code> sin las líneas de registro y con las tablas que Spark imprime con <code>show</code>. La corrida completa tarda 15,9 segundos.</p>
+
+<pre class="wide">[dataframe] leidos 71355 titulos con nota
+[dataframe] select proyecta 5 de 12 columnas
++---------+------------------+---------+-------------+--------+
+|   tconst|      primaryTitle|startYear|averageRating|numVotes|
++---------+------------------+---------+-------------+--------+
+|tt0071036|          Porridge|     1974|          8.3|    7657|
+|tt0071040|             Rhoda|     1974|          6.8|    3333|
+|tt0071041|       Rising Damp|     1974|          7.7|    3271|
+|tt0071042|The Rockford Files|     1974|          8.2|   13091|
+|tt0071050|           Shazam!|     1974|          6.5|    1882|
++---------+------------------+---------+-------------+--------+
+
+[dataframe] filter deja 10342 peliculas desde 1990 con diez mil votos o mas
++------------------------------+---------+--------+
+|                  primaryTitle|startYear|numVotes|
++------------------------------+---------+--------+
+|        The Match Factory Girl|     1990|   14018|
+|   Three Men and a Little Lady|     1990|   29091|
+|The Adventures of Ford Fair...|     1990|   20493|
+|                     Agneepath|     1990|   10115|
+|                   Air America|     1990|   32888|
+|                         Alice|     1990|   16499|
+|               Another 48 Hrs.|     1990|   48359|
+|                 Arachnophobia|     1990|   82195|
++------------------------------+---------+--------+
+
+</pre>
+
+<pre class="wide">[dataframe] groupBy produce 346 combinaciones de genero y decada
++------+------+-----+
+| genre|decade|count|
++------+------+-----+
+| Drama|  2010|11234|
+| Drama|  2020| 8342|
+|Comedy|  2010| 7264|
+| Drama|  2000| 6346|
+|Comedy|  2000| 4715|
+|Comedy|  2020| 4646|
+|Action|  2010| 4411|
+| Crime|  2010| 3263|
++------+------+-----+
+
+[dataframe] agg calcula nota media, votos y titulos por genero
++---------+----------+---------+-------+
+|genre    |nota_media|votos    |titulos|
++---------+----------+---------+-------+
+|Drama    |6.632     |780182598|36722  |
+|Action   |6.255     |455854395|13598  |
+|Comedy   |6.414     |454673995|24345  |
+|Adventure|6.473     |392075848|9431   |
+|Crime    |6.529     |312035520|11536  |
+|Thriller |5.926     |245855804|9141   |
+|Romance  |6.501     |173767428|10769  |
+|Sci-Fi   |5.747     |173354277|3478   |
++---------+----------+---------+-------+
+
+</pre>
+
+<pre class="wide">[dataframe] orderBy desempata la nota por cantidad de votos
++------------------------------+---------+-------------+--------+
+|                  primaryTitle|startYear|averageRating|numVotes|
++------------------------------+---------+-------------+--------+
+|     IShowSpeed: Early Stream!|     2021|         10.0|   27014|
+|                      Mayookha|     2026|         10.0|    2120|
+|Sohla: Celebration Under th...|     2026|         10.0|    1253|
+|          Grief 97% Stream 361|     2026|          9.9|    1860|
+|                    Anakapalli|     2026|          9.9|    1772|
+|        Red Sea Film Fest 2024|     2025|          9.9|    1107|
+|                      All Pass|     2026|          9.9|    1085|
+|         Maa Ramudu Andarivadu|     2026|          9.9|    1016|
++------------------------------+---------+-------------+--------+
+
+[dataframe] Window con row_number deja tres titulos por genero
++---------+--------+-------------------------+-------------+
+|    genre|posicion|             primaryTitle|averageRating|
++---------+--------+-------------------------+-------------+
+|   Action|       1|     Grief 97% Stream 361|          9.9|
+|   Action|       2|               Anakapalli|          9.9|
+|   Action|       3|    Maa Ramudu Andarivadu|          9.9|
+|    Adult|       1|Pirates II: Stagnetti'...|          7.4|
+|    Adult|       2|                  Pirates|          7.0|
+|    Adult|       3|                 Taboo II|          7.0|
+|Adventure|       1|   Red Dead Redemption II|          9.8|
+|Adventure|       2|The Witcher 3: Wild Hu...|          9.7|
+|Adventure|       3|The Lord of the Rings:...|          9.7|
+|Animation|       1|Rascal Does Not Dream ...|          9.5|
+|Animation|       2|Avatar: The Last Airbe...|          9.3|
+|Animation|       3|Steel Ball Run: JoJo's...|          9.3|
++---------+--------+-------------------------+-------------+
+
+</pre>
+
+<pre class="wide">[dataframe] pivot cruza la decada con tres tipos de titulo
++------+-----+--------+-------+
+|decade|movie|tvSeries|tvMovie|
++------+-----+--------+-------+
+|  1920| 7.03|    null|   null|
+|  1930| 6.79|    null|   null|
+|  1940|  6.8|    7.8 |   null|
+|  1950| 6.65|   7.74 |    5.9|
+|  1960| 6.61|   7.44 |   6.07|
+|  1970| 6.46|   7.52 |   6.56|
+|  1980| 6.27|   7.31 |   6.65|
+|  1990| 6.33|   7.26 |    6.3|
+|  2000|  6.2|   7.15 |   5.94|
++------+-----+--------+-------+
+
+[dataframe] regexp_replace encuentra 4984 titulos repetidos
++------------------+-----+
+|titulo_normalizado|count|
++------------------+-----+
+|        the oscars|   13|
+|            mother|   12|
+|           monster|   12|
+|        cinderella|   12|
+|           dracula|   11|
+|          the game|   10|
+|      the return  |   10|
+|           beauty |   10|
++------------------+-----+
+
+[dataframe] corr sin filtrar nulos da -0.129 porque Spark los lee como cero
+[dataframe] corr entre duracion y nota da -0.056 sobre 68047 titulos
+[dataframe] demo terminada en 15.9 s</pre>
+
+<p>El plan físico que imprime el bloque de <code>agg</code> ocupa varias decenas de líneas y se omitió del anexo para no repetir una estructura que el lector puede reproducir con una sola ejecución. El plan se genera con <code>explain()</code> y muestra las dos etapas de intercambio que Catalyst decide para agrupar y ordenar.</p>
+
+</body>
+</html>
