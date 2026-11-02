@@ -1,0 +1,4 @@
+consulta,interfaz,milisegundos
+nota_ponderada_por_decada,rdd_tsv,51124
+nota_ponderada_por_decada,dataframe_tsv,2714
+nota_ponderada_por_decada,dataframe_parquet,1357
