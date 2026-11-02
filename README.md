@@ -1,6 +1,85 @@
-﻿# Laboratorio 05 de Apache Spark
+# Laboratorio 05 de Apache Spark
 
 Este documento reúne el enunciado, el plan y la ejecución del laboratorio 05 de Apache Spark. El tema elegido es el catálogo público de IMDb y todas las secciones describen ese conjunto, de modo que el archivo sirve a la vez como guía de trabajo, como justificación de las decisiones y como evidencia de lo que se entrega.
+
+## Paso a paso
+
+Esta secuencia reproduce el laboratorio completo desde un clon vacío. Todos los comandos se escriben desde la raíz del repositorio en PowerShell 5.1 o superior, y todos pasan por `install\run.ps1`, que carga el entorno del laboratorio y fija la memoria del controlador antes de arrancar la JVM.
+
+### 1. Traer el repositorio
+
+```powershell
+git clone https://github.com/nemryz/spark-lab05.git
+cd spark-lab05
+```
+
+Quien no tenga git descarga el ZIP desde GitHub y desbloquea los archivos con `Get-ChildItem -Recurse | Unblock-File`. Si Windows bloquea los scripts, la sesión se abre con `powershell -ExecutionPolicy Bypass` antes del primer comando.
+
+### 2. Instalar el entorno
+
+```powershell
+.\install\install-spark.ps1
+.\install\verify-install.ps1
+.\install\run.ps1 status
+```
+
+La primera ejecución tarda entre 10 y 20 minutos y las siguientes omiten lo que ya existe. El instalador escribe `install\spark-env.ps1`, que no viaja en git, así que este paso no se puede saltar aunque `.tools` ya esté en disco. La verificación termina con doce comprobaciones y el estado muestra las rutas de Java, Python, Spark y Hadoop.
+
+### 3. Descargar los datos
+
+```powershell
+.\install\run.ps1 python scripts\get_data.py
+```
+
+Son 1,1 GB entre los dos archivos. La descarga se reanuda desde el último byte si se interrumpe y deja un manifiesto con URL, tamaño, fecha y SHA256.
+
+### 4. Curar, muestrear y comprobar
+
+```powershell
+.\install\run.ps1 python scripts\build_curated.py
+.\install\run.ps1 python scripts\make_sample.py --rows 5000
+.\install\run.ps1 python tests\check_data.py
+```
+
+La curaduría deja 71.355 títulos y 1.727.597 notas, la muestra queda en 5.000 filas y 479 KB, y la comprobación imprime siete líneas en verde.
+
+Con curar nos referimos a convertir el TSV crudo en Parquet tipado y en TSV plano, con las columnas correctas y los nulos bien interpretados.
+
+Y, con muestrear nos referimos a tomar 5.000 filas al azar y guardarlas en CSV, para que el repositorio no publique 1,1 GB de datos. Mediante el uso de comprobar nos referimos a verificar que la curaduría y la muestra tengan el tamaño esperado, que los archivos estén en git y que el hash coincida con el manifiesto.
+
+### 5. Ejecutar la demo de RDD
+
+```powershell
+.\install\run.ps1 submit src\rdd_lab.py
+```
+
+Tarda unos dos minutos y casi cuarenta segundos son el `join`. La salida empieza con `[rdd] leidos 71355 titulos y 1727597 notas` y termina con `[rdd] demo terminada`.
+
+### 6. Ejecutar la demo de DataFrame
+
+```powershell
+.\install\run.ps1 submit src\dataframe_lab.py
+```
+
+Tarda unos dieciséis segundos. La salida empieza con `[dataframe] leidos 71355 titulos con nota` y termina con `[dataframe] demo terminada`.
+
+### 7. Medir las tres rutas
+
+```powershell
+.\install\run.ps1 submit src\benchmark.py
+```
+
+Escribe `informe\mediciones.csv` con los tiempos de esta máquina, así que las cifras dejan de coincidir con las del informe. Para conservar las publicadas se restaura el archivo con `git restore informe\mediciones.csv`.
+
+| Paso | Qué produce | Qué se espera ver |
+| --- | --- | --- |
+| Instalación | Spark, JDK, winutils, Python 3.10 y entorno virtual | Doce comprobaciones en verde y el estado del entorno |
+| Descarga | `title.basics.tsv.gz`, `title.ratings.tsv.gz` y `manifest.json` | Dos líneas con bytes y SHA256 |
+| Curaduría | `titles` y `ratings` en Parquet y en TSV | 71.355 títulos y 1.727.597 notas |
+| Muestra | `imdb_sample.csv` | 5.000 filas y el peso del archivo |
+| Demo con RDD | Ocho bloques en consola | Particiones, conteos y top de votos |
+| Demo con DataFrame | Nueve bloques y un plan | Resultados por género y milisegundos |
+| Medición | `informe\mediciones.csv` | Tres filas con la misma consulta y su tiempo |
 
 ## Qué pide el enunciado
 
@@ -11,8 +90,6 @@ El taller califica cinco puntos. El primero es un cuadro comparativo entre RDD, 
 | Cuadro comparativo | Tabla con criterios de abstracción, tipado, optimización, serialización y uso | Se lee en el informe y en las diapositivas |
 | Ejemplo con RDD | Script ejecutable con cuatro transformaciones y cuatro acciones nuevas | La salida imprime el nombre de cada función |
 | Ejemplo con DataFrame | Script ejecutable con las funciones de clase más cuatro investigadas | La salida imprime el nombre de cada función |
-| Equipos | Correo con la lista de integrantes antes del cierre | Acuse del docente |
-| Exposición | Diez minutos con tolerancia de dos minutos | Cronómetro del docente |
 
 Las condiciones de la exposición son estrictas. Cada minuto fuera del rango de ocho a doce minutos descuenta dos puntos sobre la nota. Todos los integrantes deben exponer y estar presentes al momento de la entrega, porque la ausencia de una persona vale 1,0 individualmente y resta dos puntos al equipo. La conformación también tiene regla propia, ya que deben existir cuatro equipos, el mínimo es de dos estudiantes y el docente reasigna a quien quede sin equipo.
 
@@ -32,13 +109,13 @@ El trabajo se parte en seis piezas que se verifican por separado. Cada una tiene
 
 La ingesta es la base de todo lo demás. Si la descarga no queda registrada con su hash, la muestra no se puede reconstruir y el informe pierde trazabilidad. Por eso el primer script escribe un manifiesto con URL, tamaño, fecha y SHA256 de cada archivo, y el segundo convierte ese crudo en Parquet tipado sin volver a descargar nada.
 
-Las dos demos son independientes entre sí. La de RDD trabaja con pares clave valor y con un particionador explícito. La de DataFrame trabaja con columnas nombradas y deja que Catalyst decida el plan. Cada una imprime el nombre de la función antes de usarla, de modo que la salida sirva como evidencia en la exposición.
+Las dos demos son independientes entre sí y la medición reutiliza el analizador de la demo de RDD. La de RDD trabaja con pares clave valor y con un particionador explícito. La de DataFrame trabaja con columnas nombradas y deja que Catalyst decida el plan. Cada una imprime el nombre de la función antes de usarla, de modo que la salida sirva como evidencia en la exposición.
 
-El cierre tiene cuatro pasos que no aparecen en la tabla porque son de proceso. Enviar el correo de conformación, ensayar con cronómetro al menos dos veces, revisar que todos puedan explicar cualquier punto y guardar las capturas de ejecución antes de armar las diapositivas.
+El cierre tiene cuatro pasos que no aparecen en la tabla porque son de proceso.  
 
 ## Cómo funciona
 
-El flujo tiene cinco estaciones y cada una produce algo que la siguiente consume. El crudo se descarga una sola vez, la curaduría lo convierte en columnas tipadas, y las demos leen ese resultado sin tocar la red.
+El flujo tiene seis estaciones y cada una produce algo que la siguiente consume. El crudo se descarga una sola vez, la curaduría lo convierte en columnas tipadas, y las demos leen ese resultado sin tocar la red.
 
 ```text
 datasets.imdbws.com
@@ -52,7 +129,9 @@ data/curated/imdb/titles.tsv  +  ratings.tsv  (texto plano)
         |
         +--> src/rdd_lab.py  ----------> salida por consola
         |
-        +--> src/dataframe_lab.py -----> salida por consola, plan y tiempos
+        +--> src/dataframe_lab.py -----> salida por consola y plan físico
+        |
+        +--> src/benchmark.py ---------> informe/mediciones.csv
         |
         v
 data/sample/imdb_sample.csv
@@ -60,26 +139,6 @@ data/sample/imdb_sample.csv
         v
 informe/informe.pdf  +  diapositivas/presentacion.pdf
 ```
-
-Los comandos se ejecutan siempre a través del lanzador, que carga el entorno del laboratorio y fija la memoria del controlador antes de arrancar la JVM.
-
-```powershell
-.\install\run.ps1 python scripts\get_data.py --resource basics
-.\install\run.ps1 python scripts\get_data.py --resource ratings
-.\install\run.ps1 python scripts\build_curated.py
-.\install\run.ps1 python scripts\make_sample.py --rows 5000
-.\install\run.ps1 python tests\check_data.py
-.\install\run.ps1 submit src\rdd_lab.py
-.\install\run.ps1 submit src\dataframe_lab.py
-```
-
-| Paso | Qué produce | Qué se espera ver |
-| --- | --- | --- |
-| Descarga | `title.basics.tsv.gz`, `title.ratings.tsv.gz` y `manifest.json` | Dos líneas con bytes y SHA256 |
-| Curaduría | `titles` y `ratings` en Parquet y en TSV | 71.355 títulos y 1.727.597 notas |
-| Muestra | `imdb_sample.csv` | 5.000 filas y el peso del archivo |
-| Demo con RDD | Ocho bloques en consola | Particiones, conteos y top de votos |
-| Demo con DataFrame | Nueve bloques, el plan y los tiempos | Plan físico y milisegundos por consulta |
 
 La descarga se reanuda desde el último byte cuando se interrumpe, gracias a una petición por rango sobre el archivo parcial. La curaduría lee el TSV por transmisión, sin cargarlo entero en memoria, y escribe Parquet por bloques. Ese detalle es el que permite procesar 1,12 GB con un equipo de 8 GB.
 
@@ -108,7 +167,7 @@ La curaduría conserva los nombres originales y añade dos columnas derivadas. L
 | `titleType` | texto | basics | `countByValue`, `pivot` y filtros |
 | `primaryTitle` | texto | basics | `regexp_replace` y muestras |
 | `startYear` | entero | basics | `Window` por década y filtro temprano |
-| `runtimeMinutes` | entero | basics | `aggregate` y promedios |
+| `runtimeMinutes` | entero | basics | Correlación con la nota en la demo de DataFrame |
 | `genres` | texto con comas | basics | `explode` y `pivot` |
 | `averageRating` | decimal | ratings | `takeOrdered` y `Window` |
 | `numVotes` | entero | ratings | `aggregate` y ranking |
@@ -118,31 +177,33 @@ La curaduría aplica cuatro reglas. Descarta las filas sin `tconst`, traduce `\N
 
 ## Demo con RDD
 
-La demo lee el TSV curado como texto para mostrar el costo de interpretar cada línea a mano, y después encadena las ocho funciones sobre pares clave valor. El orden importa porque deja ver dónde aparece un shuffle y qué lo evita. Como el archivo no está comprimido, la demo lo abre con ocho particiones mínimas y muestra el conteo real de cada una.
+La demo lee el TSV curado como texto para mostrar el costo de interpretar cada línea a mano, y después encadena las ocho funciones sobre pares clave valor. El orden importa porque deja ver dónde aparece un shuffle y qué precio tiene. Como el archivo no está comprimido, la demo lo abre con ocho particiones mínimas y muestra el conteo real de cada una.
 
 | Función | Tipo | Qué hace en la demo | Salida esperada |
 | --- | --- | --- | --- |
-| `mapPartitionsWithIndex` | Transformación | Recorre cada partición con su índice y cuenta elementos | Una línea por partición con su conteo |
-| `distinct` | Transformación | Reduce los tipos de título a su conjunto único | Menos de diez valores |
-| `join` | Transformación | Cruza títulos con calificaciones por `tconst` | Conteo de pares emparejados |
-| `partitionBy` | Transformación | Reparte por hash de `tconst` antes del `join` | Conteo por partición sin huecos |
-| `takeOrdered` | Acción | Devuelve las diez películas con más votos | Diez tuplas ordenadas |
-| `aggregate` | Acción | Calcula la nota media ponderada por votos | Un decimal con la nota global |
-| `countByValue` | Acción | Cuenta títulos por tipo sin `reduceByKey` | Diccionario con el conteo |
-| `foreachPartition` | Acción | Escribe un resumen por partición | Un archivo con una línea por partición |
+| `mapPartitionsWithIndex` | Transformación | Recorre cada partición con su índice y cuenta elementos | Ocho conteos de 8.721 a 9.039 |
+| `distinct` | Transformación | Reduce los tipos de título a su conjunto único | Nueve tipos |
+| `join` | Transformación | Cruza títulos con calificaciones por `tconst` | 71.355 pares en 39,5 s |
+| `partitionBy` | Transformación | Reparte por hash de `tconst` antes del `join` | Ocho particiones sin huecos |
+| `takeOrdered` | Acción | Devuelve las diez películas con más votos | Diez tuplas con sus votos |
+| `aggregate` | Acción | Calcula la nota media ponderada por votos | 7,152 sobre 1.503.735.096 votos |
+| `countByValue` | Acción | Cuenta títulos por tipo sin `reduceByKey` | Nueve tipos con su conteo |
+| `foreachPartition` | Acción | Escribe un resumen por partición | Ocho líneas en `resumen_particiones.txt` |
 
-Las cuatro transformaciones elegidas no aparecen en la lista de clase, que son `map`, `filter`, `flatMap` y `reduceByKey`. Las cuatro acciones tampoco aparecen en la otra lista, que son `collect`, `count`, `take` y `reduce`. `map` y `filter` sí se usan como apoyo para parsear y limpiar, pero no cuentan como las funciones nuevas y la salida las marca como auxiliares.
+Las cuatro transformaciones elegidas no aparecen en la lista de clase, que son `map`, `filter`, `flatMap` y `reduceByKey`. Las cuatro acciones tampoco aparecen en la otra lista, que son `collect`, `count`, `take` y `reduce`. `map` y `filter` sí se usan como apoyo para parsear y limpiar, pero no cuentan como las funciones nuevas.
 
-La demo imprime el número de particiones antes y después de cada paso. Ese detalle permite explicar en el informe que `join` y `distinct` provocan un shuffle, que `partitionBy` lo hace una sola vez y que el `join` posterior lo aprovecha, y que `takeOrdered` solo mueve un montón pequeño al controlador.
+La demo imprime el número de particiones antes y después de cada paso. `distinct` y `join` provocan un shuffle, y `partitionBy` reparte por hash sin dejar huecos. El `join` posterior no aprovecha ese reparto, porque PySpark lo implementa con `groupByKey` sobre la unión de las dos ramas y descarta el particionador anterior, una diferencia con Scala que el informe explica y que el cuadro comparativo recoge. `takeOrdered` solo mueve un montón pequeño al controlador.
+
+La corrida completa tarda entre 117 y 121 segundos en este equipo y unos 40 de ellos son el `join`. Ese número es el argumento central del cuadro comparativo, porque la misma consulta con DataFrame tarda entre 2,1 y 2,7 segundos sobre el TSV y alrededor de 1,3 segundos sobre Parquet. La sesión se abre con `local[2]` y ocho particiones de shuffle, porque con doce núcleos y un giga de heap cada tarea recibe muy poca memoria y el trabajo falla.
 
 ## Demo con DataFrame
 
-La demo responde cinco preguntas con las funciones vistas en clase y cuatro más con funciones investigadas. Cada bloque imprime la consulta, el resultado y el plan físico para que la comparación con RDD use la misma evidencia.
+La demo responde cinco preguntas con las funciones vistas en clase y cuatro más con funciones investigadas. Cada bloque imprime el nombre de la función y su resultado. El plan físico se muestra solo en el bloque de `agg`, porque repetirlo nueve veces llenaría la consola sin aportar nada nuevo.
 
 | Función | Origen | Pregunta que resuelve |
 | --- | --- | --- |
 | `select` | Clase | Proyecta clave, título, año y nota |
-| `filter` | Clase | Deja películas desde 1990 con más de mil votos |
+| `filter` | Clase | Deja películas desde 1990 con diez mil votos o más |
 | `groupBy` | Clase | Agrupa por género y década |
 | `agg` | Clase | Calcula promedio de nota y suma de votos |
 | `orderBy` | Clase | Ordena por nota y desempata por votos |
@@ -151,9 +212,15 @@ La demo responde cinco preguntas con las funciones vistas en clase y cuatro más
 | `explode` con `split` | Investigada | Un renglón por género a partir de la lista |
 | `regexp_replace` | Investigada | Normaliza títulos para detectar repetidos |
 
-El cierre ejecuta la misma consulta con las dos interfaces, mide el tiempo con `time.perf_counter` y guarda el resultado en `informe\mediciones.csv` con tres columnas, consulta, interfaz y milisegundos. Esa tabla alimenta la fila de medición del cuadro comparativo y la conclusión sobre cuándo conviene cada interfaz.
+El cierre vive en `src\benchmark.py` y ejecuta la misma consulta por tres caminos, RDD sobre el TSV, DataFrame sobre el TSV y DataFrame sobre el Parquet. Cada camino corre dos veces y se conserva la segunda medición, para que el arranque de la JVM no contamine el resultado. Las tres rutas producen las mismas dieciséis filas y la comparación se guarda en `informe\mediciones.csv` con tres columnas, consulta, interfaz y milisegundos.
+
+La corrida real deja 51.124 milisegundos para RDD sobre texto, 2.714 para DataFrame sobre el mismo texto y 1.357 para DataFrame sobre Parquet. Hay casi diecinueve veces entre las dos interfaces y dos veces más al cambiar el formato, y esa segunda cifra importa porque separa lo que aporta el motor de lo que aporta el Parquet.
 
 La demo usa además `corr` para mostrar la relación entre duración y nota, y `percentile_approx` para la mediana de votos por género. Esas dos funciones quedan como refuerzo en el informe y no reemplazan a las cuatro investigadas.
+
+La primera corrida de `corr` devolvió −0,129 y no cuadraba con un cálculo independiente en pandas, que daba −0,056. La causa es que `Correlation` lee la columna con `getDouble`, y ese método devuelve cero cuando la celda es nula, de modo que los 3.308 títulos sin duración entraban al promedio como si duraran nada. La demo imprime ahora los dos números, el ingenuo y el del filtro `isNotNull`, y el informe explica la trampa porque es el error más fácil de repetir sin darse cuenta.
+
+El bloque de `Window` deja un resultado que conviene explicar en la exposición. Al ordenar solo por nota, el podio de cada género se llena de títulos con mil votos y nota inflada, mientras que las películas conocidas quedan por debajo. Ese efecto justifica mantener `numVotes` en el esquema y explicar la diferencia entre nota y popularidad, y el bloque de `orderBy` desempata justamente por votos.
 
 ## Comparativa de las tres interfaces
 
@@ -167,7 +234,7 @@ La demo usa además `corr` para mostrar la relación entre duración y nota, y `
 | API disponible en Python | Sí | Sí | No |
 | Casos de uso | Control fino y datos sin estructura | ETL, SQL y analítica tabular | Dominios tipados sobre la JVM |
 | Depuración | Errores en tiempo de ejecución | Plan físico legible con `explain` | Errores de tipo antes de ejecutar |
-| Medición en la misma consulta | Se registra en `informe\mediciones.csv` | Se registra en `informe\mediciones.csv` | No aplica en Python |
+| Medición en la misma consulta | 51.124 ms sobre TSV | 2.714 ms sobre TSV y 1.357 ms sobre Parquet | No aplica en Python |
 | Líneas de código | Más, por el parseo manual | Menos, por las columnas nombradas | Intermedio, con clases del dominio |
 
 PySpark no expone `Dataset`, puesto que el tipo `Dataset[T]` pertenece a Scala y Java, donde el `Encoder[T]` conserva el esquema en tiempo de compilación. En Python toda la API tabular pasa por `DataFrame`, que equivale a un `Dataset[Row]` sin tipado estático. El informe incluye un ejemplo corto en Scala para mostrar la diferencia real.
@@ -293,14 +360,14 @@ Spark/
 │  ├─ raw/imdb/                      TSV comprimido, ignorado por git
 │  ├─ curated/imdb/                  Parquet y TSV curados, ignorado por git
 │  └─ sample/                        Muestra versionada
-├─ src/                              rdd_lab.py y dataframe_lab.py
-├─ informe/                          Informe en PDF y figuras
-├─ diapositivas/                     Presentacion en PDF
+├─ src/                              rdd_lab.py, dataframe_lab.py y benchmark.py
+├─ informe/                          Informe en PDF, fuente HTML, figuras y mediciones
+└─ diapositivas/                     Presentacion en PDF y su fuente HTML
 ├─ tests/                            Humo, comprobación de datos y Pester
 └─ README.md                         Este documento
 ```
 
-Las carpetas `informe` y `diapositivas` se crean cuando empieza esa fase.
+La carpeta `diapositivas` se crea cuando empieza esa fase.
 
 ## Estado
 
@@ -311,9 +378,11 @@ Las carpetas `informe` y `diapositivas` se crean cuando empieza esa fase.
 | Descarga y curaduría de IMDb | Terminada, 71.355 títulos y 18,8 MB |
 | Muestra versionada | Terminada, 5.000 filas y 479 KB |
 | Comprobación de datos | Terminada, siete verificaciones en verde |
-| Demo con RDD | Pendiente, con las ocho funciones ya elegidas |
-| Demo con DataFrame | Pendiente, con las nueve funciones ya elegidas |
-| Cuadro comparativo con mediciones | Pendiente de la ejecución |
-| Informe y diapositivas | Pendientes |
+| Demo con RDD | Terminada, ocho funciones y unos 120 s |
+| Demo con DataFrame | Terminada, nueve funciones y unos 20 s |
+| Medición de las tres rutas | Terminada, 51.124, 2.714 y 1.357 ms |
+| Cuadro comparativo con mediciones | Terminado, con las cifras reales |
+| Informe | Terminado, 19 páginas con cuatro figuras y dos anexos |
+| Diapositivas | Terminadas, 15 diapositivas en PDF |
 
-El siguiente paso es escribir `src\rdd_lab.py`, que ya tiene las ocho funciones elegidas y los TSV curados como entrada. Después sigue `src\dataframe_lab.py` con las nueve funciones, y la medición de ambas alimenta el cuadro comparativo y el informe.
+El siguiente paso es la exposición, con la medición, las figuras y los anexos del informe como respaldo. El ensayo con cronómetro debe caer dentro de la ventana de ocho a doce minutos, y el bloque de orderBy con sus títulos de nota 10 es el material más útil para explicar la diferencia entre nota y popularidad.

@@ -1,0 +1,241 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Presentación Laboratorio 05 Apache Spark</title>
+<style>
+  @page { size: 297mm 167mm; margin: 0; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Helvetica, Arial, sans-serif; background: #ffffff; color: #1b1d20; }
+  .slide { width: 297mm; height: 167mm; padding: 14mm 18mm; box-sizing: border-box; page-break-after: always; display: flex; flex-direction: column; justify-content: center; position: relative; }
+  .slide:last-child { page-break-after: auto; }
+  .overline { font-size: 10pt; letter-spacing: 3px; text-transform: uppercase; color: #1f6f4a; margin-bottom: 8mm; }
+  h1 { font-size: 34pt; line-height: 1.05; margin: 0 0 6mm 0; color: #14352a; }
+  h2 { font-size: 26pt; margin: 0 0 8mm 0; color: #14352a; border-bottom: 2px solid #1f6f4a; padding-bottom: 3mm; }
+  p { font-size: 15pt; line-height: 1.4; margin: 0 0 4mm 0; }
+  ul { margin: 0; padding-left: 8mm; }
+  li { font-size: 15pt; line-height: 1.45; margin-bottom: 3mm; }
+  li strong { color: #1f6f4a; }
+  .small { font-size: 12pt; color: #5f6670; }
+  .mono { font-family: Consolas, "Courier New", monospace; font-size: 11.5pt; background: #f6f8f9; border-left: 3px solid #1f6f4a; padding: 4mm 5mm; line-height: 1.35; white-space: pre; }
+  .mono.wide { font-size: 9.5pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; align-items: start; }
+  .figure { width: 100%; display: block; }
+  .caption { font-size: 10pt; color: #5f6670; margin-top: 3mm; }
+  .cover { justify-content: center; }
+  .cover h1 { font-size: 40pt; }
+  .cover .subtitle { font-size: 16pt; color: #3d454c; max-width: 200mm; }
+  .cover .rule { height: 3px; background: #1f6f4a; width: 60mm; margin: 6mm 0; }
+  .num { position: absolute; bottom: 6mm; right: 8mm; font-size: 9pt; color: #9aa2a9; }
+  table { width: 100%; border-collapse: collapse; font-size: 12pt; }
+  th { background: #1f6f4a; color: #fff; padding: 2mm 3mm; text-align: left; }
+  td { padding: 2mm 3mm; border-bottom: 1px solid #e3e7ea; }
+  tbody tr:nth-child(even) td { background: #f6f9f7; }
+  td.r { text-align: right; }
+  .callout { background: #eef4f0; border-left: 3px solid #1f6f4a; padding: 4mm 5mm; margin-top: 4mm; }
+  .callout p { font-size: 13pt; margin: 0; }
+  .cover .meta { font-size: 12pt; color: #5f6670; margin-top: 8mm; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<section class="slide cover">
+  <div class="overline">Laboratorio 05</div>
+  <h1>Apache Spark</h1>
+  <div class="subtitle">Cuadro comparativo de RDD, DataFrame y Dataset, con dos demostraciones y una medición de la misma consulta por tres caminos sobre IMDb</div>
+  <div class="rule"></div>
+  <div class="meta">Asignatura [asignatura] · Docente [docente] · Integrantes [integrante 1], [integrante 2] · Entrega [fecha]</div>
+  <div class="num">1</div>
+</section>
+
+<section class="slide">
+  <h2>Objetivo y por qué IMDb</h2>
+  <ul>
+    <li>Comparar RDD, DataFrame y Dataset con evidencia propia, no solo con la documentación</li>
+    <li>Construir dos demostraciones ejecutables que impriman el nombre de cada función</li>
+    <li>Medir la misma consulta por tres caminos y separar el efecto del motor del efecto del formato</li>
+    <li>Documentar los hallazgos en un informe de 19 páginas y exponer en 10 minutos</li>
+  </ul>
+  <p class="small" style="margin-top:6mm">IMDb ofrece 12,9 millones de títulos y 1,7 millones de calificaciones sin clave ni registro. El filtro de mil votos deja 71.355 títulos de 9 tipos en 16 décadas.</p>
+  <div class="num">2</div>
+</section>
+
+<section class="slide">
+  <h2>Cuadro comparativo</h2>
+  <table>
+    <thead><tr><th>Criterio</th><th>RDD</th><th>DataFrame</th><th>Dataset</th></tr></thead>
+    <tbody>
+      <tr><td>Nivel</td><td>Colección de objetos</td><td>Tabla con esquema</td><td>Tabla tipada</td></tr>
+      <tr><td>Tipado</td><td>Dinámico</td><td>En ejecución</td><td>Estático en JVM</td></tr>
+      <tr><td>Optimización</td><td>Ninguna</td><td>Catalyst y Tungsten</td><td>Catalyst y codificadores</td></tr>
+      <tr><td>Serialización</td><td>Java o Kryo</td><td>Binaria de Tungsten</td><td>Binaria guiada</td></tr>
+      <tr><td>En Python</td><td>Sí</td><td>Sí</td><td>No</td></tr>
+      <tr><td>Medición</td><td>51.124 ms</td><td>2.714 ms / 1.357 ms</td><td>No aplica</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><p>Dataset no existe en Python. La API tabular de PySpark es DataFrame, equivalente a un Dataset[Row] sin tipado estático. El error de nombre de columna se descubre en ejecución, no en compilación.</p></div>
+  <div class="num">3</div>
+</section>
+
+
+
+
+
+<section class="slide">
+  <h2>Dataset en Scala</h2>
+  <p>El fragmento se ejecuta en <code>.\install\run.ps1 shell</code> y muestra la única diferencia real, que es el momento en que se descubre un error de tipo.</p>
+  <pre class="mono">case class Title(tconst: String, titleType: String, startYear: Int, averageRating: Double)
+
+val titles = spark.read.parquet("data/curated/imdb/titles").as[Title]
+
+titles.filter(t =&gt; t.startYear &gt;= 2000 &amp;&amp; t.averageRating &gt;= 8.0)
+      .groupBy("titleType")
+      .avg("averageRating")</pre>
+  <div class="num">4</div>
+</section>
+
+<section class="slide">
+  <h2>Demostración con RDD</h2>
+  <p>Cuatro transformaciones y cuatro acciones que no aparecen en las listas de clase. La demo lee el TSV curado como texto y encadena las ocho sobre pares clave valor.</p>
+  <table>
+    <thead><tr><th>Transformaciones</th><th>Acciones</th></tr></thead>
+    <tbody>
+      <tr><td>mapPartitionsWithIndex</td><td>takeOrdered</td></tr>
+      <tr><td>distinct</td><td>aggregate</td></tr>
+      <tr><td>partitionBy</td><td>countByValue</td></tr>
+      <tr><td>join</td><td>foreachPartition</td></tr>
+    </tbody>
+  </table>
+  <p class="small">map y filter se usan solo para parsear y limpiar, no cuentan como las funciones nuevas.</p>
+  <div class="num">5</div>
+</section>
+
+<section class="slide">
+  <h2>RDD, salida real</h2>
+  <pre class="mono wide">[rdd] leidos 71355 titulos y 1727597 notas
+[rdd] titles ocupa 8 particiones con [8883, 9014, 8897, 8897, 8884, 8924, 8885, 8971]
+[rdd] distinct deja 9 tipos de titulo
+[rdd] partitionBy ocupa 8 particiones con [8918, 9025, 9004, 8923, 8906, 8721, 9039, 8819]
+[rdd] join empareja 71355 pares en 39.5 s
+[rdd] takeOrdered devuelve los 10 titulos con mas votos
+[rdd]   The Shawshank Redemption                9.3  3260058
+[rdd]   The Dark Knight                         9.1  3245703
+[rdd]   Inception                               8.8  2885372
+[rdd] aggregate calcula la nota media ponderada 7.152 sobre 1503735096 votos
+[rdd] demo terminada en 121.3 s  <div class="num">6</div>
+</section>
+
+<section class="slide">
+  <h2>El hallazgo del join</h2>
+  <div class="callout"><p>En PySpark, partitionBy no ahorra el intercambio del join posterior. join se traduce en python_join, que une las dos ramas y las agrupa con groupByKey. Ese groupByKey crea un particionador nuevo y descarta el anterior.</p></div>
+  <ul>
+    <li>En Scala, PairRDDFunctions.join compara los particionadores y evita el segundo intercambio</li>
+    <li>cogroup también pasa por groupByKey, así que no es una alternativa</li>
+    <li>La alternativa práctica es quitar el partitionBy y dejar que el join haga el suyo</li>
+  </ul>
+  <p class="small">La comprobación está en pyspark/join.py, función _do_python_join, no en la intuición.</p>
+  <div class="num">7</div>
+</section>
+
+<section class="slide">
+  <h2>Demostración con DataFrame</h2>
+  <p>Cinco funciones de clase y cuatro investigadas. Cada bloque imprime el nombre y su resultado. El plan físico se muestra solo en agg.</p>
+  <table>
+    <thead><tr><th>Clase</th><th>Investigadas</th></tr></thead>
+    <tbody>
+      <tr><td>select</td><td>Window con row_number</td></tr>
+      <tr><td>filter</td><td>pivot</td></tr>
+      <tr><td>groupBy</td><td>explode con split</td></tr>
+      <tr><td>agg</td><td>regexp_replace</td></tr>
+      <tr><td>orderBy</td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="small">corr y percentile_approx se usan como refuerzo, sin reemplazar a las cuatro investigadas.</p>
+  <div class="num">8</div>
+</section>
+
+<section class="slide">
+  <h2>DataFrame, salida real</h2>
+  <pre class="mono wide">[dataframe] leidos 71355 titulos con nota
+[dataframe] filter deja 10342 peliculas desde 1990 con diez mil votos o mas
+[dataframe] groupBy produce 346 combinaciones de genero y decada
+[dataframe] agg calcula nota media, votos y titulos por genero
+[dataframe] orderBy desempata la nota por cantidad de votos
+[dataframe] Window con row_number deja tres titulos por genero
+[dataframe] pivot cruza la decada con tres tipos de titulo
+[dataframe] regexp_replace encuentra 4984 titulos repetidos
+[dataframe] corr sin filtrar nulos da -0.129 porque Spark los lee como cero
+[dataframe] corr entre duracion y nota da -0.056 sobre 68047 titulos
+[dataframe] demo terminada en 15.9 s  <div class="num">9</div>
+</section>
+
+<section class="slide">
+  <h2>Nota y popularidad</h2>
+  <div class="two">
+    <div>
+      <img class="figure" src="../informe/figuras/votos_nota.png" alt="votos vs nota">
+    </div>
+    <div>
+      <ul>
+        <li>Con pocos votos la nota se dispersa entre 1 y 10</li>
+        <li>Basta un puñado de calificaciones altas para llegar al 9,9</li>
+        <li>El podio por nota se llena de títulos oscuros</li>
+        <li>La mediana sube en los títulos con muchos votos</li>
+      </ul>
+      <div class="callout"><p>Ordenar por nota exige un mínimo de votos. numVotes se conserva en el esquema para poder hacer esa distinción.</p></div>
+    </div>
+  </div>
+  <div class="num">10</div>
+</section>
+
+<section class="slide">
+  <h2>Medición de las tres rutas</h2>
+  <img class="figure" src="../informe/figuras/rutas.png" alt="rutas">
+  <p class="small" style="margin-top:4mm">RDD sobre TSV 51.124 ms · DataFrame sobre TSV 2.714 ms · DataFrame sobre Parquet 1.357 ms</p>
+  <div class="num">11</div>
+</section>
+
+<section class="slide">
+  <h2>Interpretación</h2>
+  <ul>
+    <li><strong>Interfaz.</strong> RDD transporta cada línea como cadena de Python y el motor no puede inspeccionarla. DataFrame lee con un analizador en la JVM y mueve datos binarios. Diferencia de casi diecinueve veces.</li>
+    <li><strong>Formato.</strong> Parquet guarda tipos, comprime por columnas y permite leer solo las columnas necesarias. La consulta toca tres de diez, y el ahorro es directo.</li>
+    <li><strong>Independencia.</strong> Las dos mejoras se acumulan. Pasar de RDD sobre texto a DataFrame sobre Parquet va de 51 segundos a poco más de uno.</li>
+  </ul>
+  <div class="num">12</div>
+</section>
+
+<section class="slide">
+  <h2>Dificultades</h2>
+  <ul>
+    <li><strong>Canal del trabajador.</strong> first() sobre particiones grandes corta la conexión en Windows. Se descarta la cabecera en el analizador.</li>
+    <li><strong>Memoria.</strong> Doce núcleos con un giga de heap reparten tan poco que el trabajo aborta. Se baja a local[2] con ocho particiones.</li>
+    <li><strong>Módulos.</strong> src no llega a los trabajadores sin addPyFile.</li>
+    <li><strong>Nulos.</strong> Correlation lee los nulos como cero y devuelve un número equivocado sin avisar.</li>
+  </ul>
+  <div class="num">13</div>
+</section>
+
+<section class="slide">
+  <h2>Conclusiones</h2>
+  <ul>
+    <li>La interfaz pesa más que el formato</li>
+    <li>El formato se suma a la interfaz</li>
+    <li>El RDD sigue teniendo sentido sin esquema o con particionador propio, pero en Python no sobrevive entre partitionBy y join</li>
+    <li>El DataFrame no elimina la necesidad de pensar, ordenar por nota llena el podio de títulos oscuros</li>
+    <li>Las dificultades aparecen solo sobre datos reales y se resuelven con cambios pequeños</li>
+    <li>La reproducibilidad no es un adorno</li>
+  </ul>
+  <div class="num">14</div>
+</section>
+
+<section class="slide">
+  <h2>Cierre</h2>
+  <p>El cuadro comparativo, las dos demostraciones y la medición cubren los cinco puntos del enunciado.</p>
+  <p>La medición añade una fila que no estaba pedida y que resulta ser la más útil, porque obliga a separar dos efectos que suelen presentarse juntos.</p>
+  <p class="small" style="margin-top:8mm">Repositorio, código y evidencia en https://github.com/nemryz/spark-lab05</p>
+  <div class="num">15</div>
+</section>
+
+</body>
+</html>
