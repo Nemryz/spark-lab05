@@ -72,9 +72,60 @@ Get-Content logs\DataFrame\<archivo>.log
 
 Cada ejecución genera dos archivos. El archivo `.log` guarda los mensajes de Spark y de la JVM. El archivo `.stdout.log` guarda la salida completa del script. La consola muestra solo las líneas de resultado después del filtrado.
 
-### Otros comandos del lanzador
+## Otros comandos del lanzador
 
-El lanzador también acepta `pyspark`, `python`, `jupyter`, `notebook` y `shell`. El comando `pyspark` abre una shell interactiva. El comando `python` ejecuta el intérprete del entorno virtual. Los comandos `jupyter` y `notebook` abren las interfaces de cuadernos. El comando `shell` inicia la shell de Scala.
+Además de `status` y `submit`, el lanzador acepta cinco comandos para abrir herramientas del entorno. Todos reenvían los argumentos que se escriben después del nombre del comando.
+
+| Comando | Programa que ejecuta | Cuándo usarlo |
+|---|---|---|
+| `pyspark` | Consola interactiva de PySpark | Probar transformaciones sin crear un script |
+| `python` | Intérprete del entorno virtual | Instalar paquetes o ejecutar utilidades |
+| `jupyter` | JupyterLab | Cuadernos con varias celdas |
+| `notebook` | Interfaz clásica de Jupyter | Cuadernos simples |
+| `shell` | spark-shell de Scala | Revisar la API de Scala |
+
+### pyspark
+
+Abre una consola interactiva con `spark` y `sc` ya creados. Sirve para probar una transformación antes de escribirla en un script y para revisar el resultado de una operación sin editar archivos. Para salir, escribí `exit()`.
+
+```powershell
+.\install\run.ps1 pyspark
+```
+
+### python
+
+Ejecuta el intérprete del entorno virtual. Sirve para instalar paquetes y para correr utilidades que no necesitan Spark, porque el entorno no incluye PySpark y los scripts de Spark se ejecutan con `submit`.
+
+```powershell
+.\install\run.ps1 python -m pip install -r install\requirements-dev.txt
+```
+
+### jupyter
+
+Abre JupyterLab desde el entorno virtual. Conviene cuando el análisis se reparte en varias celdas y se quiere conservar la salida de cada paso. La herramienta se instala con los paquetes de `install/requirements.txt`, así que el comando responde con un error si esa instalación todavía no se ejecutó.
+
+```powershell
+.\install\run.ps1 python -m pip install -r install\requirements.txt
+.\install\run.ps1 jupyter
+```
+
+### notebook
+
+Abre la interfaz clásica de Jupyter Notebook. Funciona igual que `jupyter` y la diferencia está en la interfaz. También depende de los paquetes de `install/requirements.txt`.
+
+```powershell
+.\install\run.ps1 notebook
+```
+
+### shell
+
+Abre la consola de Scala que incluye Spark. Sirve para comparar la API de Scala con la de PySpark, aunque este laboratorio trabaja solo con Python.
+
+```powershell
+.\install\run.ps1 shell
+```
+
+Por ejemplo, `.\install\run.ps1 pyspark --master local[2]` cambia el maestro y `.\install\run.ps1 jupyter --no-browser` evita abrir el navegador.
 
 ## El enunciado
 
