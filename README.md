@@ -358,7 +358,7 @@ RDD conviene cuando la lógica necesita control sobre cada paso, cuando los dato
 | Cuadro comparativo | Terminado | Sección RDD y DataFrame frente a frente |
 | Resultados | Terminado | Tablas de resultados de ambas demos |
 | Informe | Pendiente | Se entregará aparte |
-| Presentación | En preparación | Se entregará aparte |
+| Presentación | En preparación | analisisVideojuegosRDDvsDataFrames.pptx |
 | Benchmark formal | Pendiente | La medición actual es una observación |
 | Exposición | Pendiente | Diez minutos con todos los integrantes |
 
@@ -381,6 +381,7 @@ Spark/
 │  ├─ dataset_videojuegos.csv
 │  └─ requirements.txt
 ├─ logs/                  (se genera al ejecutar y no se versiona)
+├─ analisisVideojuegosRDDvsDataFrames.pptx
 ├─ .gitignore
 └─ README.md
 ```
