@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+prueba/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
@@ -42,5 +43,5 @@ install/spark-env.ps1
 Thumbs.db
 desktop.ini
 
-# Entorno virtual del laboratorio de videojuegos
+# venv del laboratorio de videojuegos
 LaboratorioPyspark/prueba/

@@ -1,9 +1,6 @@
-findspark==2.0.1
-kagglehub==1.0.3
-pyspark==4.2.0
-#requiere ademas
-#Java	Versión 17 o 21, con JAVA_HOME apuntando a ella
-#Python	3.1 o superior 
-#El csv de videojuegos debe estar en la carpeta data
-#intalar credenciales de kaggle si es necesario para descargar el dataset
-#internet solo si no se tiene el dataset descargado
+﻿# Dependencias de Python del laboratorio de videojuegos
+# pyspark viene incluido en Apache Spark 3.3.4, no se instala con pip
+# pandas y matplotlib solo si se generan figuras para el informe
+pandas==1.5.3
+pyarrow==11.0.0
+matplotlib==3.8.4

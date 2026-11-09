@@ -1,46 +1,24 @@
-# librerias nativas de python para buscar y mover archivos en el computador
+# librerias nativas de python
 import os
-import shutil
-
-# libreria para que python logre ubicar donde esta instalado apache spark
-# (con pip a veces no hace falta, por eso va en try)
-try:
-    import findspark
-    findspark.init()
-except Exception:
-    pass
 
 # el motor principal que nos permite crear y manejar los DataFrames
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 
-#---------------------------------------------------- incicio del Script  ----------------------------------------------------
+#---------------------------------------------------- inicio del script ----------------------------------------------------
 
 # levantamos la sesion de spark
 spark = SparkSession.builder.appName("Lab05_DataFrame").getOrCreate()
 
-# armamos la ruta para dejar el csv aca en nuestra misma carpeta
-ruta_local = os.path.join(os.getcwd(), "dataset_videojuegos.csv")
-
-# si el csv ya esta en la carpeta no hace falta bajarlo de nuevo
-if not os.path.exists(ruta_local):
-    # la libreria que instalamos para descargar el dataset directo desde internet
-    import kagglehub
-    # descargamos el dataset directo de kaggle
-    print("bajando el dataset...")
-    ruta_dataset = kagglehub.dataset_download("onlypythondatasheet/100000-video-game-dataset-with-records")
-    # buscamos cual es el csv dentro de la carpeta oculta
-    nombre_archivo_csv = [a for a in os.listdir(ruta_dataset) if a.endswith('.csv')][0]
-    # lo copiamos para tenerlo a mano y no depender del cache
-    shutil.copy2(os.path.join(ruta_dataset, nombre_archivo_csv), ruta_local)
-    print("listo, archivo copiado a nuestra carpeta.")
-else:
-    print("el archivo ya estaba en la carpeta.")
+# armamos la ruta del csv (esta en la misma carpeta que este script)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+ruta_local = os.path.join(script_dir, "dataset_videojuegos.csv")
 
 # cargamos el df
 df = spark.read.csv(ruta_local, header=True, inferSchema=True, quote='"', escape='"', multiLine=True)
 
 # el csv trae comas de mas en el encabezado y por eso aparecen columnas vacias (_c19 en adelante)
-# las sacamos con drop() y nos quedamos solo con las 19 columnas que si tienen datos
+# las sacamos con drop() y nos quedamos solo con las columnas que si tienen datos
 columnas_vacias = [c for c in df.columns if c.startswith("_c")]
 df = df.drop(*columnas_vacias)
 
@@ -61,34 +39,28 @@ print("columnas:", df.columns)
 df.printSchema()
 
 
-# --- las 2 funciones nuevas que me tocaban ---
-print("\n--- mis 2 funciones nuevas ---")
+# --- las funciones nuevas ---
+print("\n--- funciones nuevas ---")
+
+# el csv trae todo como texto, asi que pasamos a numero lo que vamos a usar
+# cast deja NULL si no es numero, asi no se cae (en spark 3.3.4 cast devuelve null para valores no numericos)
+df_num = (df
+          .withColumn("rating", F.col("rating").cast("double"))
+          .withColumn("ratings_count", F.col("ratings_count").cast("int"))
+          .withColumn("metacritic", F.col("metacritic").cast("int")))
 
 # 1. describe() pa sacar estadisticas al toque (promedio, min, max) de los ratings
 print("1. estadisticas rapidas del rating:")
-df.select("rating").describe().show()
+df_num.select("rating").describe().show()
 
 # 2. dropDuplicates() pa limpiar la data y sacar juegos repetidos
 print("2. limpiando repetidos:")
-df_limpio = df.dropDuplicates()
+df_limpio = df_num.dropDuplicates()
 print("juegos que quedaron despues de limpiar:", df_limpio.count())
-
-
-# --- las otras 2 funciones nuevas (parte 4) ---
-print("\n--- mis funciones nuevas (parte 4) ---")
-
-from pyspark.sql import functions as F
-
-# el csv trae todo como texto (y hay filas medio sucias), asi que pasamos a numero
-# lo que vamos a usar. try_cast deja NULL si no es numero, asi no se cae
-df_num = (df_limpio
-          .withColumn("rating", F.expr("try_cast(rating as double)"))
-          .withColumn("ratings_count", F.expr("try_cast(ratings_count as int)"))
-          .withColumn("metacritic", F.expr("try_cast(metacritic as int)")))
 
 # 3. withColumn() pa agregar una columna nueva: la categoria del juego segun su rating
 print("3. withColumn(): categoria segun el rating")
-df_cat = df_num.withColumn(
+df_cat = df_limpio.withColumn(
     "categoria",
     F.when(F.col("rating").isNull(), "Sin calificar")
      .when(F.col("rating") >= 4, "Excelente")
@@ -106,10 +78,6 @@ print("4. groupBy().agg(): resumen por categoria")
             F.sum("ratings_count").alias("votos_totales"))
        .orderBy(F.desc("total_juegos"))
        .show())
-
-
-# --- dos funciones extra ---
-print("\n--- funciones extra ---")
 
 # 5. filter() pa quedarnos solo con los juegos mejor valorados (rating alto y con harta gente votando)
 #    y orderBy() pa ordenarlos por cantidad de votos
