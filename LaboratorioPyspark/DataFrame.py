@@ -9,6 +9,7 @@ from pyspark.sql import functions as F
 
 # levantamos la sesion de spark
 spark = SparkSession.builder.appName("Lab05_DataFrame").getOrCreate()
+spark.sparkContext.setLogLevel("WARN")
 
 # armamos la ruta del csv (esta en la misma carpeta que este script)
 script_dir = os.path.dirname(os.path.abspath(__file__))

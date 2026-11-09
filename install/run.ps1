@@ -22,6 +22,8 @@ param(
     [string]$Command = 'status'
 )
 
+$repoRoot = Split-Path -Parent $PSScriptRoot
+
 $rest = @($args)
 
 $envFile = Join-Path $PSScriptRoot 'spark-env.ps1'
@@ -99,8 +101,34 @@ switch ($Command.ToLowerInvariant()) {
     }
     'submit' {
         $submitArguments = Get-SubmitArguments -Arguments $rest
-        & (Join-Path $env:SPARK_HOME 'bin\spark-submit.cmd') @submitArguments
-        exit $LASTEXITCODE
+        $scriptName = [System.IO.Path]::GetFileNameWithoutExtension($rest[-1])
+        if (-not $scriptName) { $scriptName = "spark" }
+        $logDir = Join-Path $repoRoot "logs\$scriptName"
+        if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
+        $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+        $logFile = Join-Path $logDir "$timestamp.log"
+        $stdoutFile = Join-Path $logDir "$timestamp.stdout.log"
+        $scriptNameForDisplay = if ($rest -and $rest.Count -gt 0) { [System.IO.Path]::GetFileName($rest[-1]) } else { $Command }
+        Write-Host "Ejecutando $scriptNameForDisplay ..." -ForegroundColor Cyan
+        # capturar stdout y stderr por separado
+        # stderr (logs de spark/jvm) va al archivo de log
+        # stdout se filtra para mostrar solo los resultados (no los INFO de spark)
+        & (Join-Path $env:SPARK_HOME 'bin\spark-submit.cmd') @submitArguments 1>$stdoutFile 2>$logFile
+        $exitCode = $LASTEXITCODE
+        # mostrar solo las lineas que no son ruido de spark
+        if (Test-Path $stdoutFile) {
+            Get-Content $stdoutFile | Where-Object {
+                $_ -notmatch '^\d{2}/\d{2}/\d{2}' -and
+                $_ -notmatch 'INFO|WARN|DEBUG|spark-submit|Using Spark|Setting default|To adjust|======' -and
+                $_.Trim() -ne ''
+            } | ForEach-Object { Write-Host $_ }
+        }
+        if ($exitCode -eq 0) {
+            Write-Host "`nTerminado OK. Logs de Spark en: $logFile" -ForegroundColor Green
+        } else {
+            Write-Host "`nTerminado con error $exitCode. Revisa: $logFile" -ForegroundColor Red
+        }
+        exit $exitCode
     }
     'python' {
         & (Join-Path $env:SPARK_LAB_VENV 'Scripts\python.exe') @rest
