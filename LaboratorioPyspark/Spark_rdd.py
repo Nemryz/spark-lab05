@@ -9,8 +9,8 @@ os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 from pyspark import SparkContext
 
-# levantamos spark en local con 2 hilos (setup validado en nuestro laboratorio de imdb)
-sc = SparkContext("local[2]", "TallerRDDVideojuegos")
+# levantamos spark en local con 1 hilo (en windows, local[2] provoca cuelgues con shuffle)
+sc = SparkContext("local[1]", "TallerRDDVideojuegos")
 sc.setLogLevel("WARN")
 
 try:
@@ -31,13 +31,14 @@ try:
 
     print("Cantidad de videojuegos cargados:", len(datos))
 
-    # partimos los juegos en dos grupos: A (posiciones pares) y B (impares)
+    # --- transformacion 0: particion de datos ---
+    # dividimos el dataset en dos grupos: A (posiciones pares) y B (posiciones impares)
     datos_a = datos[::2]
     datos_b = datos[1::2]
 
-    # creamos los RDD con 8 particiones cada uno (setup validado en nuestro laboratorio de imdb)
-    rdd_a = sc.parallelize(datos_a, 8)
-    rdd_b = sc.parallelize(datos_b, 8)
+    # creamos los RDD con 4 particiones cada uno
+    rdd_a = sc.parallelize(datos_a, 4)
+    rdd_b = sc.parallelize(datos_b, 4)
 
     print("Cantidad de videojuegos grupo A:", rdd_a.count())
     print("Cantidad de videojuegos grupo B:", rdd_b.count())
@@ -57,40 +58,43 @@ try:
 
     print("\nTRANSFORMACION 1 - flatMap")
     print("Total de generos en el grupo A:", generos_a.count())
+    print("Muestra de generos del grupo A:", generos_a.distinct().take(10))
 
-    # transformacion 2: union, junta los generos de los dos grupos
+    # transformacion 2: union, junta los generos de los dos grupos en un solo conjunto
     generos_unidos = generos_a.union(generos_b)
 
     print("\nTRANSFORMACION 2 - union")
     print("Total de generos unidos:", generos_unidos.count())
+    print("Muestra de generos unidos:", generos_unidos.distinct().take(10))
 
-    # transformacion 3: map, pasa cada genero a mayusculas (transformacion elemento a elemento)
-    generos_mayuscula = generos_unidos.map(lambda g: g.upper())
+    # transformacion 3: intersection, identifica los generos compartidos entre A y B
+    generos_comunes = generos_a.intersection(generos_b)
 
-    print("\nTRANSFORMACION 3 - map")
-    print("Total de generos en mayuscula:", generos_mayuscula.count())
+    print("\nTRANSFORMACION 3 - intersection")
+    print("Cantidad de generos compartidos:", generos_comunes.count())
+    print("Generos compartidos:", sorted(generos_comunes.distinct().collect()))
 
-    # transformacion 4: filter, deja solo los generos que empiezan con A
-    generos_con_a = generos_mayuscula.filter(lambda g: g.startswith("A"))
+    # transformacion 4: subtract, aísla los generos exclusivos del grupo A
+    generos_exclusivos = generos_a.subtract(generos_b)
 
-    print("\nTRANSFORMACION 4 - filter")
-    print("Cantidad de generos que empiezan con A:", generos_con_a.count())
+    print("\nTRANSFORMACION 4 - subtract")
+    print("Cantidad de generos exclusivos de A:", generos_exclusivos.count())
+    print("Generos exclusivos de A:", sorted(generos_exclusivos.distinct().collect()))
 
-    # accion 1: take, trae los primeros generos distintos del grupo A
-    generos_distintos_a = generos_a.distinct().take(100)
+    # accion 1: collect, extrae a memoria la coleccion completa de generos distintos ya procesados
+    generos_distintos = generos_unidos.distinct().collect()
 
-    print("\nACCION 1 - take (muestra de generos distintos)")
-    print("Cantidad de generos distintos en el grupo A:", len(generos_distintos_a))
-    print("Generos distintos:", sorted(generos_distintos_a))
+    print("\nACCION 1 - collect")
+    print("Cantidad de generos distintos:", len(generos_distintos))
+    print("Generos distintos:", sorted(generos_distintos))
 
-    # accion 2: count, suma 1 por cada genero pa sacar el total de asignaciones
-    # (en Windows, reduce() sobre RDDs grandes cuelga el pipe, usamos count() que es estable)
-    total_generos = generos_unidos.map(lambda g: 1).count()
+    # accion 2: reduce, sumatoria total de los elementos iterando y combinando los valores
+    total_generos = generos_unidos.map(lambda g: 1).reduce(lambda a, b: a + b)
 
-    print("\nACCION 2 - count (total de asignaciones)")
+    print("\nACCION 2 - reduce")
     print("Total de generos asignados (grupo A + grupo B):", total_generos)
 
-    # accion 3: countByValue, cuenta cuantas veces sale cada genero
+    # accion 3: countByValue, conteo de la frecuencia exacta en que aparece cada genero
     conteo_generos = generos_unidos.countByValue()
 
     print("\nACCION 3 - countByValue")
@@ -98,21 +102,16 @@ try:
     for genero, cantidad in sorted(conteo_generos.items(), key=lambda x: -x[1]):
         print(f"  {genero}: {cantidad}")
 
-    # top 5 por frecuencia, calculado en Python a partir de countByValue
-    # (evitamos reduceByKey + takeOrdered, que cuelgan el pipe en Windows)
-    top_5 = sorted(conteo_generos.items(), key=lambda x: -x[1])[:5]
-
-    print("\nTop 5 generos mas frecuentes (calculado en Python):")
-    for posicion, (genero, cantidad) in enumerate(top_5, start=1):
-        print(f"  {posicion}. {genero}: {cantidad}")
-
-    # accion 4: takeOrdered, los 10 generos distintos ordenados alfabeticamente
-    top_10_ordenados = generos_a.distinct().takeOrdered(10)
+    # accion 4: takeOrdered, extraccion de los 5 generos principales ordenados de forma descendente por frecuencia
+    # (usamos countByValue para obtener los conteos y luego takeOrdered sobre un RDD pequeno,
+    #  porque reduceByKey + takeOrdered sobre el RDD grande cuelga el pipe en windows)
+    rdd_conteos = sc.parallelize(list(conteo_generos.items()))
+    top_5 = rdd_conteos.takeOrdered(5, key=lambda x: -x[1])
 
     print("\nACCION 4 - takeOrdered")
-    print("10 generos distintos ordenados:")
-    for posicion, genero in enumerate(top_10_ordenados, start=1):
-        print(f"  {posicion}. {genero}")
+    print("Top 5 generos mas frecuentes:")
+    for posicion, (genero, cantidad) in enumerate(top_5, start=1):
+        print(f"  {posicion}. {genero}: {cantidad}")
 
 finally:
     # cerramos spark
