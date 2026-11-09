@@ -41,3 +41,6 @@ install/spark-env.ps1
 .idea/
 Thumbs.db
 desktop.ini
+
+# Entorno virtual del laboratorio de videojuegos
+LaboratorioPyspark/prueba/
