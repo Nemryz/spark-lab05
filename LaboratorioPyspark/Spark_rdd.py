@@ -57,28 +57,24 @@ try:
 
     print("\nTRANSFORMACION 1 - flatMap")
     print("Total de generos en el grupo A:", generos_a.count())
-    print("Muestra de generos del grupo A:", generos_a.distinct().take(10))
 
     # transformacion 2: union, junta los generos de los dos grupos
     generos_unidos = generos_a.union(generos_b)
 
     print("\nTRANSFORMACION 2 - union")
     print("Total de generos unidos:", generos_unidos.count())
-    print("Muestra de generos unidos:", generos_unidos.distinct().take(10))
 
     # transformacion 3: map, pasa cada genero a mayusculas (transformacion elemento a elemento)
     generos_mayuscula = generos_unidos.map(lambda g: g.upper())
 
     print("\nTRANSFORMACION 3 - map")
     print("Total de generos en mayuscula:", generos_mayuscula.count())
-    print("Muestra en mayuscula:", generos_mayuscula.distinct().take(10))
 
     # transformacion 4: filter, deja solo los generos que empiezan con A
     generos_con_a = generos_mayuscula.filter(lambda g: g.startswith("A"))
 
     print("\nTRANSFORMACION 4 - filter")
     print("Cantidad de generos que empiezan con A:", generos_con_a.count())
-    print("Muestra que empiezan con A:", generos_con_a.distinct().take(10))
 
     # accion 1: take, trae los primeros generos distintos del grupo A
     generos_distintos_a = generos_a.distinct().take(100)
