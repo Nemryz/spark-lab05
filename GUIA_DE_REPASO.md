@@ -129,14 +129,9 @@ El campo `about` incluye saltos de línea y comillas, así que la lectura del Da
 
 `Spark_rdd.py` fija `PYSPARK_PYTHON` y `PYSPARK_DRIVER_PYTHON` al intérprete actual, levanta un `SparkContext` en `local[1]` y lee el CSV con el módulo `csv` y la codificación `utf-8-sig`. Conserva solo los juegos que tienen nombre y géneros. Esa lista queda en el driver y se reparte en dos grupos.
 
-```text
-datos_a = datos[::2]
-datos_b = datos[1::2]
-rdd_a = sc.parallelize(datos_a, 4)
-rdd_b = sc.parallelize(datos_b, 4)
-```
+El grupo A recibe las posiciones pares, el grupo B recibe las impares y cada RDD se crea con cuatro particiones.
 
-El grupo A recibe las posiciones pares y el grupo B las impares. Cada RDD usa cuatro particiones. La división no es una transformación de Spark, es una preparación para comparar los conjuntos. El resultado son 76.890 juegos con nombre y género, 38.445 en cada grupo.
+La división no es una transformación de Spark, es una preparación para comparar los conjuntos. El resultado son 76.890 juegos con nombre y género, 38.445 en cada grupo.
 
 ### Las cuatro transformaciones
 
